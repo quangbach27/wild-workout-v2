@@ -6,17 +6,17 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+	commonHttp "github.com/quangbach27/golang-common/http"
+	commonAuth "github.com/quangbach27/golang-common/http/auth"
+	"golang.org/x/sync/errgroup"
+
 	"backend/internal/configs"
 	"backend/internal/modules"
 	"backend/internal/modules/contracts"
 	"backend/internal/trainers"
 	"backend/internal/trainings"
 	"backend/internal/users"
-
-	"github.com/jackc/pgx/v5/pgxpool"
-	commonHttp "github.com/quangbach27/golang-common/http"
-	commonAuth "github.com/quangbach27/golang-common/http/auth"
-	"golang.org/x/sync/errgroup"
 )
 
 type ExternalServices struct {
@@ -50,7 +50,7 @@ func New(
 	moduleContracts := &contracts.Contracts{}
 	modules := []modules.Module{
 		users.NewModule(),
-		trainers.NewModule(),
+		trainers.NewModule(config, pgxDb),
 		trainings.NewModule(),
 	}
 

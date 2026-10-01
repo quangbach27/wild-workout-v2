@@ -17,12 +17,12 @@ go-mod-update:
 	go get -u ./...
 
 test-unit:
-	go test ./internal/...
+	go test -race ./internal/...
 
 test-integration:
 	set -a; . ./.env.test; set +a; \
-	go test -tags integration ./internal/... -count=1
+	go test -race -tags integration ./internal/... -count=1
 
 test-component:
 	set -a; . ./.env.test; set +a; \
-	go test -tags component ./tests/... -count=1
+	go test -race -tags component ./tests/... -count=1

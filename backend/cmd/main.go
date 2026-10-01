@@ -7,11 +7,12 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+	commonAuth "github.com/quangbach27/golang-common/http/auth"
+	commonLog "github.com/quangbach27/golang-common/log"
+
 	"backend/internal"
 	"backend/internal/configs"
-
-	"github.com/jackc/pgx/v5/pgxpool"
-	commonLog "github.com/quangbach27/golang-common/log"
 )
 
 func main() {
@@ -31,7 +32,9 @@ func main() {
 		ctx,
 		config,
 		dbPgx,
-		internal.ExternalServices{},
+		internal.ExternalServices{
+			TokenVerifier: commonAuth.NewStubTokenVerifier(),
+		},
 	)
 	if err != nil {
 		panic(err)

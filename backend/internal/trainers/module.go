@@ -3,22 +3,48 @@ package trainers
 import (
 	"context"
 	"embed"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	commonDb "github.com/quangbach27/golang-common/db"
 	"github.com/quangbach27/golang-common/http"
 
+	"backend/internal/configs"
 	"backend/internal/modules/contracts"
+	"backend/internal/trainers/adapters/db"
+	"backend/internal/trainers/app/commands"
+	"backend/internal/trainers/app/queries"
+	"backend/internal/trainers/domain"
+	portHttp "backend/internal/trainers/ports/http"
 	"backend/internal/trainers/ports/module"
 )
 
 type Module struct {
 	dbPgx *pgxpool.Pool
+
+	config *configs.Config
+
+	commandsHandler *commands.Handler
+	queriesHandler  *queries.Handler
 }
 
-func NewModule() *Module {
-	return &Module{}
+func NewModule(config *configs.Config, dbPgx *pgxpool.Pool) *Module {
+	errs := []error{}
+	if config == nil {
+		errs = append(errs, errors.New("config can't be nil"))
+	}
+	if dbPgx == nil {
+		errs = append(errs, errors.New("dbPgx can't be nil"))
+	}
+	if len(errs) != 0 {
+		panic(errors.Join(errs...))
+	}
+
+	return &Module{
+		config: config,
+		dbPgx:  dbPgx,
+	}
 }
 
 func (m *Module) Name() string {
@@ -27,13 +53,29 @@ func (m *Module) Name() string {
 
 func (m *Module) Init(ctx context.Context) error {
 	if err := m.runMigration(ctx); err != nil {
-		return fmt.Errorf("error running migration in moduel: %s", m.Name())
+		return fmt.Errorf("error running migration in module %s: %w", m.Name(), err)
 	}
+
+	hourFactory, err := domain.NewHourFactory()
+	if err != nil {
+		return err
+	}
+
+	hourRepo := db.NewHourRepository(m.dbPgx, hourFactory)
+	trainerHoursReadModel := db.NewTrainerHoursReadModel(m.dbPgx, hourFactory.Config())
+
+	m.commandsHandler = commands.NewHandler(hourRepo)
+	m.queriesHandler = queries.NewHandler(trainerHoursReadModel)
 
 	return nil
 }
 
 func (m *Module) RegisterHttp(ctx context.Context, publicRouter http.EchoRouter, protectedRouter http.EchoRouter) error {
+	portHttp.Register(
+		protectedRouter,
+		portHttp.NewHandler(m.commandsHandler, m.queriesHandler),
+	)
+
 	return nil
 }
 
