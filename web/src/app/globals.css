@@ -4,6 +4,15 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@utility container {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 80rem; /* 1280px, same as max-w-7xl */
+  @media (width >= 64rem) {
+    padding-inline: 2rem;
+  }
+}
+
 @theme inline {
   --font-heading: var(--font-sans);
   --font-sans: var(--font-sans);
@@ -45,6 +54,18 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* hour color */
+  --color-hour-closed: var(--hour-closed);
+  --color-hour-closed-border: var(--hour-closed-border);
+  --color-hour-closed-foreground: var(--hour-closed-foreground);
+
+  --color-hour-open: var(--hour-open);
+  --color-hour-open-border: var(--hour-open-border);
+  --color-hour-open-foreground: var(--hour-open-foreground);
+
+  --color-hour-booked: var(--hour-booked);
+  --color-hour-booked-foreground: var(--hour-booked-foreground);
 }
 
 :root {
@@ -80,6 +101,17 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  --hour-closed: #ffffff;
+  --hour-closed-border: #e5e2dc;
+  --hour-closed-foreground: #6b6860;
+
+  --hour-open: #e8f1ea;
+  --hour-open-border: #cfe3d5;
+  --hour-open-foreground: #2f6b45;
+
+  --hour-booked: #161510;
+  --hour-booked-foreground: #ffffff;
 }
 
 .dark {
@@ -93,8 +125,8 @@
   --primary-foreground: oklch(0.979 0.021 166.113);
   --secondary: oklch(0.274 0.006 286.033);
   --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
+  --muted: oklch(0.36 0.009 90);
+  --muted-foreground: oklch(0.76 0.01 90);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
