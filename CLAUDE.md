@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Monorepo with a Go backend (`backend/`) and a Next.js frontend (`web/`). Early-stage: module wiring exists, handlers/contracts are mostly empty, domain logic is starting to land (trainers hours).
+Monorepo with a Go backend (`backend/`), a Next.js frontend (`web/`), and OpenAPI specs (`api/openapi/`) that backend codegen consumes. Early-stage: module wiring exists, handlers/contracts are mostly empty, domain logic is starting to land (trainers hours).
 
 ## Commands
 
@@ -30,4 +30,9 @@ Domain conventions (see `trainers/domain`): entities have unexported fields and 
 
 ## Frontend
 
-Next.js (App Router, `web/src/app`), React 19, Tailwind 4, ESLint + Prettier. CORS origin for local dev is `http://localhost:3000` (backend `CORS_ALLOWED_ORIGINS`).
+Next.js 16 (App Router, `web/src/app`), React 19 with the React Compiler (`babel-plugin-react-compiler`, so avoid manual `useMemo`/`useCallback`), Tailwind 4, ESLint + Prettier (with the Tailwind class-sorting plugin). CORS origin for local dev is `http://localhost:3000` (backend `CORS_ALLOWED_ORIGINS`). Path alias `@/*` → `web/src/*`.
+
+Structure (`web/src`):
+- `app/(app)/` — route group whose `layout.tsx` wraps pages in `components/layout/app-layout` (header / scrollable `main` / footer in a full-height flex column). Routes: `trainings`, `set-schedule`. Layouts use Next's global `LayoutProps<'/'>` type helper rather than hand-written prop types.
+- `features/<feature>/components/` — feature-specific UI (e.g. `features/set-schedule`); pages in `app/` should stay thin and compose these.
+- `components/layout/` — app shell pieces; `components/ui/` — shadcn primitives (style `base-maia`, built on `@base-ui/react`, lucide icons). Add new primitives with the `shadcn` CLI per `web/components.json` rather than hand-writing them; `cn()` lives in `lib/utils.ts`.

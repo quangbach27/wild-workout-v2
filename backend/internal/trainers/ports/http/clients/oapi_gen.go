@@ -1,3 +1,3 @@
 package clients
 
-//go:generate go tool oapi-codegen --config=oapi-config.yml ../openapi.yml
+//go:generate go tool oapi-codegen --config=oapi-config.yml ../../../../../../api/openapi/trainers.yml

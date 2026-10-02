@@ -48,6 +48,14 @@ Loading from the database bypasses validation via `domain.UnmarshalHour`. Reposi
 - `queries/*.sql` + `sqlc.yml` generate `dbmodels/` (do not hand-edit). Regenerate with `make gen` (`//go:generate go tool sqlc generate` in `sqlc_gen.go`). `sqlc.yml` maps `trainers.hours.status` to `domain.HourStatus`; `trainer_uuid` is `varchar(255)` so it maps to a Go `string`.
 - The repository (`hour_repository.go`) wraps queries in `commonDb.UpdateInTx`; a missing row falls back to `HourFactory.NewNotAvailableHour`.
 
+## OpenAPI (`/api/openapi`)
+
+API specs live at the repo root in `api/openapi/<module>.yml` (e.g. `trainers.yml`), outside the Go module. `make gen` produces two outputs from the trainers spec, each configured by an `oapi-config.yml` next to its `oapi_gen.go` directive (which points back at the spec with `../` paths):
+- `trainers/ports/http/openapi.gen.go` — Echo strict-server interface + models (`StrictServerInterface`, implemented by `Handler`).
+- `trainers/ports/http/clients/client.gen.go` — HTTP client used by the component tests in `tests/`.
+
+Never hand-edit `*.gen.go`; change the spec and rerun `make gen`.
+
 ## Testing conventions
 
 Tests use `github.com/stretchr/testify`: `require` for checks that must stop the test (errors, setup, anything later assertions depend on) and `assert` for independent value checks. Prefer table-driven tests with `t.Run` + `t.Parallel()`; domain tests live in the external `domain_test` package (see `trainers/domain/factory_test.go`).
