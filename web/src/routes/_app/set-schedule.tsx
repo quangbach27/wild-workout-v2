@@ -1,11 +1,19 @@
 import { createFileRoute } from '@tanstack/react-router';
 
-import { Button } from '@/components/ui/button';
+import ContentLayout from '@/components/layout/content-layout';
 
 export const Route = createFileRoute('/_app/set-schedule')({
   component: SetSchedulePage,
 });
 
 function SetSchedulePage() {
-  return <Button>Hello</Button>;
+  return (
+    <ContentLayout
+      label="Set your availability"
+      description="Tap an hour to open or close it -- changes save instantly"
+      additionalContent="[][][]"
+    >
+      Schedule page
+    </ContentLayout>
+  );
 }

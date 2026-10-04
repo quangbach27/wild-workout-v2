@@ -1,4 +1,6 @@
-import { createFileRoute, Link, Outlet } from '@tanstack/react-router';
+import { createFileRoute, Outlet } from '@tanstack/react-router';
+
+import AppLayoutComponent from '@/components/layout/app-layout';
 
 export const Route = createFileRoute('/_app')({
   component: AppLayout,
@@ -6,12 +8,8 @@ export const Route = createFileRoute('/_app')({
 
 function AppLayout() {
   return (
-    <>
-      <nav>
-        <Link to="/trainings">Trainings</Link>
-        <Link to="/set-schedule">Set schedule</Link>
-      </nav>
+    <AppLayoutComponent>
       <Outlet />
-    </>
+    </AppLayoutComponent>
   );
 }
