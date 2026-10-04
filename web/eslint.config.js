@@ -1,22 +1,33 @@
+import js from '@eslint/js';
+import globals from 'globals';
+import reactHooks from 'eslint-plugin-react-hooks';
+import reactRefresh from 'eslint-plugin-react-refresh';
+import tseslint from 'typescript-eslint';
 import { defineConfig, globalIgnores } from 'eslint/config';
-import nextVitals from 'eslint-config-next/core-web-vitals';
-import nextTs from 'eslint-config-next/typescript';
+import importPlugin from 'eslint-plugin-import-x';
+import pluginQuery from '@tanstack/eslint-plugin-query';
 
-const eslintConfig = defineConfig([
-  ...nextVitals,
-  ...nextTs,
-  // Override default ignores of eslint-config-next.
-  globalIgnores([
-    // Default ignores of eslint-config-next:
-    '.next/**',
-    'out/**',
-    'build/**',
-    'next-env.d.ts',
-    'src/api/**/generated',
-  ]),
+export default defineConfig([
+  globalIgnores(['dist', 'src/routeTree.gen.ts']),
   {
     files: ['**/*.{ts,tsx}'],
+    extends: [
+      js.configs.recommended,
+      tseslint.configs.recommended,
+      reactHooks.configs.flat.recommended,
+      reactRefresh.configs.vite,
+      pluginQuery.configs['flat/recommended-strict'],
+    ],
+    languageOptions: {
+      globals: globals.browser,
+    },
+    plugins: {
+      import: importPlugin,
+      '@tanstack/query': pluginQuery,
+    },
     rules: {
+      '@tanstack/query/exhaustive-deps': 'error',
+      'react-refresh/only-export-components': 'off',
       semi: ['warn', 'always'],
       quotes: [
         'warn',
@@ -42,8 +53,8 @@ const eslintConfig = defineConfig([
             { pattern: 'react/**', group: 'builtin', position: 'before' },
             { pattern: 'react-*/**', group: 'builtin', position: 'before' },
             { pattern: 'react-*', group: 'builtin', position: 'before' },
-            { pattern: 'next', group: 'builtin', position: 'before' },
             { pattern: 'next/**', group: 'builtin', position: 'before' },
+            { pattern: '@/shadcn/**', group: 'internal', position: 'before' },
             { pattern: '@/**', group: 'internal', position: 'after' },
           ],
           pathGroupsExcludedImportTypes: ['builtin'],
@@ -57,5 +68,3 @@ const eslintConfig = defineConfig([
     },
   },
 ]);
-
-export default eslintConfig;

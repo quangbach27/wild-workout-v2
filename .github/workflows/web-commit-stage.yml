@@ -5,6 +5,7 @@ on:
       - main
     paths:
       - "web/**"
+      - "api/**"
       - ".github/workflows/web-commit-stage.yml"
   pull_request:
     branches:
@@ -16,6 +17,7 @@ on:
       - ready_for_review
     paths:
       - "web/**"
+      - "api/**"
       - ".github/workflows/web-commit-stage.yml"
 
 env:

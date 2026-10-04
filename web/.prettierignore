@@ -1,6 +1,5 @@
-.next
-out
-build
+dist
 node_modules
-package-lock.json
+.tanstack
+src/routeTree.gen.ts
 src/api/**/generated

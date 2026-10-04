@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Monorepo with a Go backend (`backend/`), a Next.js frontend (`web/`), and OpenAPI specs (`api/openapi/`) that backend codegen consumes. Early-stage: module wiring exists, handlers/contracts are mostly empty, domain logic is starting to land (trainers hours).
+Monorepo with a Go backend (`backend/`), a Next.js frontend (`web/`), and OpenAPI specs (`api/openapi/`) that backend codegen consumes. Early-stage: the `trainers` module (hours) is implemented end to end (domain, persistence, HTTP handlers, component tests); other modules are mostly wiring. See `backend/CLAUDE.md` for deeper backend detail (persistence, OpenAPI codegen, testing conventions).
 
 ## Commands
 
@@ -16,7 +16,9 @@ Backend (run from `backend/`, see `backend/Makefile`):
 - `make test-integration` (tag `integration`, sources `.env.test`) and `make test-component` (tag `component`, `./tests/...`) — need a running Postgres
 - CI runs lint, test-unit, and `go build ./...`
 
-Web (run from `web/`): `npm run dev`, `npm run lint`, `npm run format:check` / `npm run format`, `npx tsc --noEmit` (CI's "test" step), `npm run build`.
+Web (run from `web/`): `npm run dev`, `npm run lint`, `npm run format:check` / `npm run format`, `npx tsc --noEmit` (CI's "test" step), `npm run build`, `npm run gen:api` (regenerates TS types from every `api/openapi/*.{yml,yaml}`). The web workflow runs on `web/**` and `api/**` changes.
+
+When an OpenAPI spec changes, run both `make gen` (backend) and `npm run gen:api` (web); CI does not check that generated files are up to date.
 
 ## Backend architecture
 
@@ -35,4 +37,6 @@ Next.js 16 (App Router, `web/src/app`), React 19 with the React Compiler (`babel
 Structure (`web/src`):
 - `app/(app)/` — route group whose `layout.tsx` wraps pages in `components/layout/app-layout` (header / scrollable `main` / footer in a full-height flex column). Routes: `trainings`, `set-schedule`. Layouts use Next's global `LayoutProps<'/'>` type helper rather than hand-written prop types.
 - `features/<feature>/components/` — feature-specific UI (e.g. `features/set-schedule`); pages in `app/` should stay thin and compose these.
+- `api/<module>/generated/schema.d.ts` — openapi-typescript output, one folder per spec in `/api/openapi`. Never hand-edit; it is committed because `web/Dockerfile` builds with `web/` as context and cannot see `/api`. Put hand-written client code beside `generated/` and import types via `@/api/<module>/generated/schema`. ESLint and Prettier ignore `src/api/**/generated`.
+- `features/<feature>/api/` — that feature's API calls (currently JSON-backed mocks, e.g. `set-schedule/api/get-trainer-hours.ts`). `/set-schedule` keeps the selected week in the URL (`?from=YYYY-MM-DD&to=…`); the page (server component) reads it and `WeekPanel` fetches hours on the server, passing them to the client `HourGrid`.
 - `components/layout/` — app shell pieces; `components/ui/` — shadcn primitives (style `base-maia`, built on `@base-ui/react`, lucide icons). Add new primitives with the `shadcn` CLI per `web/components.json` rather than hand-writing them; `cn()` lives in `lib/utils.ts`.
