@@ -7,8 +7,8 @@ export default function ContentLayout(props: {
   children: React.ReactNode;
 }) {
   return (
-    <div className="pt-5 md:pt-10">
-      <div className="flex flex-col gap-2 pb-3 md:flex-row md:items-end md:justify-between md:pb-5">
+    <div className="flex min-h-0 flex-1 flex-col pt-5 md:pt-10">
+      <div className="flex shrink-0 flex-col gap-2 pb-3 md:flex-row md:items-end md:justify-between md:pb-5">
         <div>
           <h1 className="text-2xl font-bold uppercase md:text-4xl">
             {props.label}
@@ -19,7 +19,7 @@ export default function ContentLayout(props: {
         {props.additionalContent && <div>{props.additionalContent}</div>}
       </div>
 
-      <div>{props.children}</div>
+      <div className="min-h-0 flex-1 overflow-auto">{props.children}</div>
     </div>
   );
 }

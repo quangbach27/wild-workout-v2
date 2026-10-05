@@ -45,7 +45,9 @@ export default function AppLayout(props: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <div className="bg-background flex-1 px-3 md:px-8">{props.children}</div>
+      <div className="bg-background container-app flex min-h-0 flex-1 flex-col px-3 md:px-8">
+        {props.children}
+      </div>
 
       <footer className="text-muted-foreground space-y-2 p-2 md:p-8">
         <div className="hidden gap-3 md:flex">

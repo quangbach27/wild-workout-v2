@@ -39,6 +39,15 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
+  --color-hour-closed: var(--hour-closed);
+  --color-hour-closed-foreground: var(--hour-closed-foreground);
+  --color-hour-closed-border: var(--hour-closed-border);
+  --color-hour-open: var(--hour-open);
+  --color-hour-open-foreground: var(--hour-open-foreground);
+  --color-hour-open-border: var(--hour-open-border);
+  --color-hour-booked: var(--hour-booked);
+  --color-hour-booked-foreground: var(--hour-booked-foreground);
+  --color-hour-action: var(--hour-action);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -151,6 +160,15 @@
   --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
   --sidebar-border: oklch(0.92 0.004 286.32);
   --sidebar-ring: oklch(0.623 0.214 259.815);
+  --hour-closed: #ffffff;
+  --hour-closed-foreground: #78756f;
+  --hour-closed-border: #e7e4de;
+  --hour-open: #edf4ec;
+  --hour-open-foreground: #2f5d3f;
+  --hour-open-border: #c4dccb;
+  --hour-booked: #1a1814;
+  --hour-booked-foreground: #ffffff;
+  --hour-action: #c2501f;
 }
 
 .dark {
@@ -185,6 +203,22 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.488 0.243 264.376);
+  --hour-closed: oklch(0.21 0.006 285.885);
+  --hour-closed-foreground: oklch(0.705 0.015 286.067);
+  --hour-closed-border: oklch(1 0 0 / 10%);
+  --hour-open: #1f3326;
+  --hour-open-foreground: #a9d6b7;
+  --hour-open-border: #355c43;
+  --hour-booked: #f7f5f1;
+  --hour-booked-foreground: #1a1814;
+  --hour-action: #e0702f;
+}
+
+@utility container-app {
+  width: 100%;
+  max-width: 1180px;
+  margin-inline: auto;
+  padding-inline: 32px;
 }
 
 @layer base {
