@@ -1,4 +1,4 @@
-const FUTURE_WEEKS = 10;
+const FUTURE_WEEKS = 6;
 const DAYS_PER_WEEK = 7;
 
 export type Week = {
@@ -46,7 +46,7 @@ export function buildWeeks(config: buildWeeksConfig): Week[] {
       label: `${monthDay.format(from)} – ${
         sameMonth ? dayOnly.format(lastDay) : monthDay.format(lastDay)
       }`,
-      tag: i === 0 ? 'This week' : undefined,
+      tag: i === 0 ? 'Current week' : undefined,
       value: {
         fromDate: from.toISOString(),
         toDate: to.toISOString(),

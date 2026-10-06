@@ -1,5 +1,8 @@
 import type { TrainerDay } from '@/api/trainers/types';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+
+import { useMakeHoursAvailable } from '../api/make-hours-available';
 
 import HourCell from './hour-cell';
 
@@ -9,9 +12,13 @@ const dayFormat = new Intl.DateTimeFormat('en-US', { day: '2-digit' });
 export default function DayColumn(props: { day: TrainerDay }) {
   const date = new Date(props.day.date);
   const isToday = date.toDateString() === new Date().toDateString();
+  const makeAvailable = useMakeHoursAvailable();
+  const closedHours = props.day.hours
+    .filter((hour) => hour.status === 'not-availability')
+    .map((hour) => hour.hour);
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2 md:gap-3">
       <div className="bg-background sticky top-0 z-10 pb-3 text-center">
         <div className="flex h-5 items-center justify-center">
           {isToday && (
@@ -28,12 +35,14 @@ export default function DayColumn(props: { day: TrainerDay }) {
         >
           {dayFormat.format(date)}
         </div>
-        <button
-          type="button"
-          className="text-hour-action font-semibold hover:underline"
+        <Button
+          variant="link"
+          className="text-hour-action font-semibold"
+          disabled={closedHours.length === 0 || makeAvailable.isPending}
+          onClick={() => makeAvailable.mutate(closedHours)}
         >
           Open all
-        </button>
+        </Button>
       </div>
       {props.day.hours.map((hour) => (
         <HourCell key={hour.hour} hour={hour} />

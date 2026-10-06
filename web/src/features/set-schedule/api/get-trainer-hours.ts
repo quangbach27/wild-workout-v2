@@ -9,7 +9,9 @@ export function getTrainerHours(range: { fromDate: string; toDate: string }) {
   });
 }
 
-// Invalidate ['trainer-hours'] after a mutation to refetch the current week.
+// Invalidate this key after a mutation to refetch the current week.
+export const TRAINER_HOURS_KEY = ['trainer-hours'] as const;
+
 export const getTrainerHoursOptions = ({
   fromDate,
   toDate,
@@ -18,6 +20,6 @@ export const getTrainerHoursOptions = ({
   toDate: string;
 }) =>
   queryOptions({
-    queryKey: ['trainer-hours', fromDate, toDate],
+    queryKey: [...TRAINER_HOURS_KEY, fromDate, toDate],
     queryFn: () => getTrainerHours({ fromDate, toDate }),
   });
