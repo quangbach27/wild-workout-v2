@@ -12,12 +12,13 @@ type HourFactoryConfig struct {
 	MinUtcHour               int
 	MaxUtcHour               int
 	MaxWeeksInTheFutureToSet int
+	Location                 *time.Location
 }
 
 func (c *HourFactoryConfig) setDefault() {
-	c.MinUtcHour = 8
-	c.MaxUtcHour = 17
-	c.MaxWeeksInTheFutureToSet = 10
+	c.MinUtcHour = 1
+	c.MaxUtcHour = 10
+	c.MaxWeeksInTheFutureToSet = 6
 }
 
 func (c *HourFactoryConfig) validate() error {
