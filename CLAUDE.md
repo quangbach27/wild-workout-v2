@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Monorepo with a Go backend (`backend/`), a Vite + React frontend (`web/`), and OpenAPI specs (`api/openapi/`) that backend codegen consumes. Early-stage: the `trainers` module (hours) is implemented end to end (domain, persistence, HTTP handlers, component tests); other modules are mostly wiring. See `backend/CLAUDE.md` for deeper backend detail (persistence, OpenAPI codegen, testing conventions).
+Monorepo with a Go backend (`backend/`), a Vite + React frontend (`web/`), and OpenAPI specs (`api/openapi/`) that backend codegen consumes. Early-stage: `trainers` (hours) and `trainings` (schedule a training, list the user's upcoming trainings) are implemented end to end (domain, persistence, HTTP, tests); `users` is only wiring. See `backend/CLAUDE.md` for deeper backend detail (persistence, OpenAPI codegen, testing conventions).
 
 ## Commands
 
@@ -27,7 +27,7 @@ When an OpenAPI spec changes, run both `make gen` (backend) and `npm run gen:api
 Modular monolith; Go module name is `backend`. Modules live in `backend/internal/{users,trainers,trainings}`, each with `module.go` implementing `modules.Module` (`Name`, `Init`, `RegisterHttp`, `RegisterContracts`), plus `domain/` and `ports/`.
 
 - `internal/svc.go` wires everything: builds the Echo server (from the external `github.com/quangbach27/golang-common` library, including token-verifier auth and public/protected routers), then for each module runs `Init` + `RegisterContracts`, calls `contracts.Verify()`, and finally `RegisterHttp`. New modules must be added to the list in `svc.go` and to `contracts.Contracts`/`Verify`.
-- Inter-module communication goes only through contracts: each module exposes an interface in `ports/module/client` (e.g. `trainers/ports/module/client.Trainers`), implemented in `ports/module/`, and registered in the shared `modules/contracts.Contracts` struct. Modules should depend on other modules' `client` interfaces, never on their internals.
+- Inter-module communication goes only through contracts: each module exposes an interface in `ports/module/client` (e.g. `trainers/ports/module/client.Trainers`), implemented in `ports/module/`, and registered in the shared `modules/contracts.Contracts` struct. Every module's `NewModule` receives the shared `*contracts.Contracts`. A consumer declares the small interface it needs (e.g. `trainings/app/commands.ModulesContract`) and the global struct satisfies it through its embedded client interfaces; modules never depend on another module's internals.
 - `cmd/main.go` creates the config (`internal/configs`, env-driven), pgx pool, and `Svc`. `ExternalServices` (e.g. `TokenVerifier`) is injected from main.
 
 Domain conventions (see `trainers/domain`): entities have unexported fields and are only constructed through a factory (e.g. `HourFactory.NewAvailableHour`), which validates input against a `*FactoryConfig` (defaults set in `NewHourFactory`, overridable via functional options). Validation failures are sentinel errors (`ErrPastHour`) or typed errors carrying context (`TooLateHourError`). Enum-like values use `common.Enum`/`common.MustEnum` from `golang-common`.

@@ -2,6 +2,7 @@ package users
 
 import (
 	"context"
+	"errors"
 
 	"backend/internal/modules/contracts"
 	"backend/internal/users/ports/module"
@@ -9,10 +10,16 @@ import (
 	"github.com/quangbach27/golang-common/http"
 )
 
-type Module struct{}
+type Module struct {
+	contracts *contracts.Contracts
+}
 
-func NewModule() *Module {
-	return &Module{}
+func NewModule(contracts *contracts.Contracts) *Module {
+	if contracts == nil {
+		panic(errors.New("contracts can't be nil"))
+	}
+
+	return &Module{contracts: contracts}
 }
 
 func (m *Module) Name() string {

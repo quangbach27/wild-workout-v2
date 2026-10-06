@@ -49,9 +49,9 @@ func New(
 
 	moduleContracts := &contracts.Contracts{}
 	modules := []modules.Module{
-		users.NewModule(),
-		trainers.NewModule(config, pgxDb),
-		trainings.NewModule(),
+		users.NewModule(moduleContracts),
+		trainers.NewModule(config, pgxDb, moduleContracts),
+		trainings.NewModule(config, pgxDb, moduleContracts),
 	}
 
 	if err = initAndRegisterModuleContracts(ctx, modules, moduleContracts); err != nil {

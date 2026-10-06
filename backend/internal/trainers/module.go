@@ -23,13 +23,14 @@ import (
 type Module struct {
 	dbPgx *pgxpool.Pool
 
-	config *configs.Config
+	config    *configs.Config
+	contracts *contracts.Contracts
 
 	commandsHandler *commands.Handler
 	queriesHandler  *queries.Handler
 }
 
-func NewModule(config *configs.Config, dbPgx *pgxpool.Pool) *Module {
+func NewModule(config *configs.Config, dbPgx *pgxpool.Pool, contracts *contracts.Contracts) *Module {
 	errs := []error{}
 	if config == nil {
 		errs = append(errs, errors.New("config can't be nil"))
@@ -37,13 +38,17 @@ func NewModule(config *configs.Config, dbPgx *pgxpool.Pool) *Module {
 	if dbPgx == nil {
 		errs = append(errs, errors.New("dbPgx can't be nil"))
 	}
+	if contracts == nil {
+		errs = append(errs, errors.New("contracts can't be nil"))
+	}
 	if len(errs) != 0 {
 		panic(errors.Join(errs...))
 	}
 
 	return &Module{
-		config: config,
-		dbPgx:  dbPgx,
+		config:    config,
+		dbPgx:     dbPgx,
+		contracts: contracts,
 	}
 }
 
@@ -80,7 +85,7 @@ func (m *Module) RegisterHttp(ctx context.Context, publicRouter http.EchoRouter,
 }
 
 func (m *Module) RegisterContracts(ctx context.Context, c *contracts.Contracts) error {
-	c.Trainers = module.New()
+	c.Trainers = module.New(m.commandsHandler)
 
 	return nil
 }

@@ -25,4 +25,4 @@ test-integration:
 
 test-component:
 	set -a; . ./.env.test; set +a; \
-	go test -race -tags component ./tests/... -count=1
+	go test -race -p 1 -tags component ./tests/... -count=1

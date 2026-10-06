@@ -56,9 +56,11 @@ func registerDevTokens(verifier *commonAuth.StubTokenVerifier) {
 		Add("mock-trainer-token", &commonAuth.Session{
 			UserID: "11111111-1111-4111-8111-111111111111",
 			Roles:  []string{"trainer"},
+			Extra:  map[string]any{"username": "mock-trainer"},
 		}).
 		Add("mock-attendee-token", &commonAuth.Session{
 			UserID: "22222222-2222-4222-8222-222222222222",
 			Roles:  []string{"attendee"},
+			Extra:  map[string]any{"username": "mock-attendee"},
 		})
 }

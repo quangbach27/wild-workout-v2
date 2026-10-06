@@ -218,7 +218,7 @@ func TestHourFactory_NewHour(t *testing.T) {
 			trainerUUID: testTrainerUUID,
 			hour:        tooDistant,
 			wantDetails: []wantDetail{{slugHour, domain.TooDistantDateError{
-				MaxWeeksInTheFutureToSet: 10,
+				MaxWeeksInTheFutureToSet: f.Config().MaxWeeksInTheFutureToSet,
 				ProvidedDate:             tooDistant,
 			}.Error()}},
 		},
@@ -227,7 +227,7 @@ func TestHourFactory_NewHour(t *testing.T) {
 			trainerUUID: testTrainerUUID,
 			hour:        tooEarly,
 			wantDetails: []wantDetail{{slugHour, domain.TooEarlyHourError{
-				MinUtcHour:   8,
+				MinUtcHour:   f.Config().MinUtcHour,
 				ProvidedTime: tooEarly,
 			}.Error()}},
 		},
@@ -236,7 +236,7 @@ func TestHourFactory_NewHour(t *testing.T) {
 			trainerUUID: testTrainerUUID,
 			hour:        tooLate,
 			wantDetails: []wantDetail{{slugHour, domain.TooLateHourError{
-				MaxUtcHour:   17,
+				MaxUtcHour:   f.Config().MaxUtcHour,
 				ProvidedTime: tooLate,
 			}.Error()}},
 		},

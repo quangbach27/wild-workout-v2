@@ -41,39 +41,6 @@ func hourFactoryConfig(t *testing.T) *domain.HourFactoryConfig {
 	return factory.Config()
 }
 
-// tomorrowHours returns n consecutive full hours, starting tomorrow at the min UTC hour.
-func tomorrowHours(t *testing.T, n int) []time.Time {
-	t.Helper()
-
-	d := time.Now().UTC().AddDate(0, 0, 1)
-	first := time.Date(d.Year(), d.Month(), d.Day(), hourFactoryConfig(t).MinUtcHour, 0, 0, 0, time.UTC)
-
-	hours := make([]time.Time, 0, n)
-	for i := range n {
-		hours = append(hours, first.Add(time.Duration(i)*time.Hour))
-	}
-
-	return hours
-}
-
-func makeHoursAvailable(
-	ctx context.Context,
-	t *testing.T,
-	clients tests.TestClients,
-	trainer testTrainer,
-	hours []time.Time,
-) {
-	t.Helper()
-
-	resp, err := clients.Trainers.MakeHoursAvailableWithResponse(
-		ctx,
-		makeHoursBody(hours),
-		tests.WithAuth(trainer.Token),
-	)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
-}
-
 func makeHoursNotAvailable(
 	ctx context.Context,
 	t *testing.T,

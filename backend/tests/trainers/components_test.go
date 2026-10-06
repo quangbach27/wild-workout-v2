@@ -26,9 +26,9 @@ func TestMakeHoursAvailable(t *testing.T) {
 		t.Parallel()
 
 		trainer := newTrainer(t)
-		hours := tomorrowHours(t, 2)
+		hours := tests.TomorrowHours(t, 2)
 
-		makeHoursAvailable(ctx, t, clients, trainer, hours)
+		tests.MakeHoursAvailable(ctx, t, clients, trainer.Token, hours)
 
 		dates := getTrainerHours(ctx, t, clients, trainer, hours[0], hours[0])
 		require.Len(t, dates, 1)
@@ -41,8 +41,8 @@ func TestMakeHoursAvailable(t *testing.T) {
 		t.Parallel()
 
 		trainer := newTrainer(t)
-		hours := tomorrowHours(t, 1)
-		makeHoursAvailable(ctx, t, clients, trainer, hours)
+		hours := tests.TomorrowHours(t, 1)
+		tests.MakeHoursAvailable(ctx, t, clients, trainer.Token, hours)
 
 		resp, err := clients.Trainers.MakeHoursAvailableWithResponse(
 			ctx,
@@ -59,7 +59,7 @@ func TestMakeHoursAvailable(t *testing.T) {
 	t.Run("without token is unauthorized", func(t *testing.T) {
 		t.Parallel()
 
-		resp, err := clients.Trainers.MakeHoursAvailableWithResponse(ctx, makeHoursBody(tomorrowHours(t, 1)))
+		resp, err := clients.Trainers.MakeHoursAvailableWithResponse(ctx, makeHoursBody(tests.TomorrowHours(t, 1)))
 
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode())
@@ -76,8 +76,8 @@ func TestMakeHoursNotAvailable(t *testing.T) {
 		t.Parallel()
 
 		trainer := newTrainer(t)
-		hours := tomorrowHours(t, 2)
-		makeHoursAvailable(ctx, t, clients, trainer, hours)
+		hours := tests.TomorrowHours(t, 2)
+		tests.MakeHoursAvailable(ctx, t, clients, trainer.Token, hours)
 
 		makeHoursNotAvailable(ctx, t, clients, trainer, hours)
 
@@ -95,7 +95,7 @@ func TestMakeHoursNotAvailable(t *testing.T) {
 
 		resp, err := clients.Trainers.MakeHoursNotAvailableWithResponse(
 			ctx,
-			makeHoursBody(tomorrowHours(t, 1)),
+			makeHoursBody(tests.TomorrowHours(t, 1)),
 			tests.WithAuth(trainer.Token),
 		)
 
@@ -108,7 +108,7 @@ func TestMakeHoursNotAvailable(t *testing.T) {
 	t.Run("without token is unauthorized", func(t *testing.T) {
 		t.Parallel()
 
-		resp, err := clients.Trainers.MakeHoursNotAvailableWithResponse(ctx, makeHoursBody(tomorrowHours(t, 1)))
+		resp, err := clients.Trainers.MakeHoursNotAvailableWithResponse(ctx, makeHoursBody(tests.TomorrowHours(t, 1)))
 
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode())
@@ -127,7 +127,7 @@ func TestGetTrainerHours(t *testing.T) {
 		t.Parallel()
 
 		trainer := newTrainer(t)
-		from := tomorrowHours(t, 1)[0]
+		from := tests.TomorrowHours(t, 1)[0]
 
 		dates := getTrainerHours(ctx, t, clients, trainer, from, from.AddDate(0, 0, 1))
 
@@ -145,9 +145,9 @@ func TestGetTrainerHours(t *testing.T) {
 		t.Parallel()
 
 		trainer := newTrainer(t)
-		hours := tomorrowHours(t, 1)
+		hours := tests.TomorrowHours(t, 1)
 		nextDay := hours[0].AddDate(0, 0, 1)
-		makeHoursAvailable(ctx, t, clients, trainer, append(hours, nextDay))
+		tests.MakeHoursAvailable(ctx, t, clients, trainer.Token, append(hours, nextDay))
 
 		dates := getTrainerHours(ctx, t, clients, trainer, hours[0], nextDay)
 
@@ -163,7 +163,7 @@ func TestGetTrainerHours(t *testing.T) {
 		t.Parallel()
 
 		trainer := newTrainer(t)
-		from := tomorrowHours(t, 1)[0]
+		from := tests.TomorrowHours(t, 1)[0]
 
 		resp, err := clients.Trainers.GetTrainerHoursWithResponse(
 			ctx,
@@ -180,7 +180,7 @@ func TestGetTrainerHours(t *testing.T) {
 	t.Run("without token is unauthorized", func(t *testing.T) {
 		t.Parallel()
 
-		from := tomorrowHours(t, 1)[0]
+		from := tests.TomorrowHours(t, 1)[0]
 
 		resp, err := clients.Trainers.GetTrainerHoursWithResponse(
 			ctx,
