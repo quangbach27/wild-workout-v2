@@ -8,7 +8,7 @@ import importPlugin from 'eslint-plugin-import-x';
 import pluginQuery from '@tanstack/eslint-plugin-query';
 
 export default defineConfig([
-  globalIgnores(['dist', 'src/routeTree.gen.ts']),
+  globalIgnores(['dist', 'storybook-static', 'src/routeTree.gen.ts']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
@@ -65,6 +65,12 @@ export default defineConfig([
           },
         },
       ],
+    },
+  },
+  {
+    files: ['**/__tests__/**/*.{ts,tsx}', 'jest.setup.ts'],
+    languageOptions: {
+      globals: globals.jest,
     },
   },
 ]);
