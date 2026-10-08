@@ -1,0 +1,214 @@
+openapi: 3.0.3
+info:
+  title: Trainings API
+  version: 1.0.0
+servers:
+  - url: http://localhost:4000
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/trainings:
+    get:
+      operationId: getUserTrainings
+      summary: Get the user's upcoming trainings
+      description: >
+        Returns the trainings, soonest first, where the user from the session is the trainer or the
+        attendee. Only trainings after now are returned, including canceled ones (see `canceled`). The list is
+        paginated with `page` and `pageSize`; `total` is the number of trainings across all pages.
+      parameters:
+        - name: page
+          in: query
+          description: Page number, starting at 1
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          description: Number of trainings per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        "200":
+          description: One page of the user's upcoming trainings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrainingsPage"
+        "400":
+          $ref: "#/components/responses/InvalidInput"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: scheduleTraining
+      summary: Schedule a training
+      description: >
+        The attendee (taken from the session) books the trainer's hour. The hour must be
+        available.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScheduleTrainingRequest"
+      responses:
+        "201":
+          description: Training scheduled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduledTraining"
+        "400":
+          $ref: "#/components/responses/InvalidInput"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/trainings/{trainingUuid}/cancel:
+    post:
+      operationId: cancelTraining
+      summary: Cancel a training
+      description: >
+        The trainer or the attendee (taken from the session) cancels the training and the trainer's
+        hour becomes available again. The attendee gets the credit back when the training is canceled
+        at least 24 hours before the hour.
+      parameters:
+        - name: trainingUuid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Training canceled
+        "400":
+          $ref: "#/components/responses/InvalidInput"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  responses:
+    InvalidInput:
+      description: The request is not valid
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: Missing or invalid access token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Forbidden:
+      description: The user is not allowed to do this, e.g. only attendees can schedule a training
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: The training does not exist
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Conflict:
+      description: The request conflicts with the current state, e.g. the trainer's hour is not available or the training is already canceled
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  schemas:
+    ScheduleTrainingRequest:
+      type: object
+      required: [trainerUuid, trainerUsername, hour, notes]
+      properties:
+        trainerUuid:
+          type: string
+        trainerUsername:
+          type: string
+        hour:
+          type: string
+          format: date-time
+        notes:
+          type: string
+    TrainingsPage:
+      type: object
+      required: [items, pagination]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Training"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+    Pagination:
+      type: object
+      required: [page, pageSize, total]
+      properties:
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+          description: Number of items across all pages
+    Training:
+      type: object
+      required: [uuid, hour, notes, attendeeUuid, attendeeUsername, trainerUuid, trainerUsername, canceled]
+      properties:
+        uuid:
+          type: string
+        hour:
+          type: string
+          format: date-time
+        notes:
+          type: string
+        attendeeUuid:
+          type: string
+        attendeeUsername:
+          type: string
+        trainerUuid:
+          type: string
+        trainerUsername:
+          type: string
+        proposedNewTime:
+          type: string
+          format: date-time
+          description: Set while a reschedule is waiting for approval
+        proposedBy:
+          type: string
+          description: Uuid of the user who proposed the reschedule, set together with proposedNewTime
+        proposedByUsername:
+          type: string
+          description: Username of proposedBy; absent for proposals stored before usernames existed
+        canceled:
+          type: boolean
+    ScheduledTraining:
+      type: object
+      required: [uuid]
+      properties:
+        uuid:
+          type: string
+    Error:
+      type: object
+      required: [message, slug]
+      properties:
+        message:
+          type: string
+        slug:
+          type: string

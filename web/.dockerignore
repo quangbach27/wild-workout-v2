@@ -1,9 +1,7 @@
 node_modules
-.next
-.git
-.gitignore
-Dockerfile
-.dockerignore
-npm-debug.log*
-.env*
-README.md
+dist
+.env
+.env.*
+!.env.example
+storybook-static
+*.log

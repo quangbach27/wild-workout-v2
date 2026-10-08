@@ -1,0 +1,196 @@
+openapi: 3.0.3
+info:
+  title: Users API
+  version: 1.0.0
+servers:
+  - url: http://localhost:4000
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/trainers:
+    get:
+      operationId: getTrainers
+      summary: Get the trainers
+      description: >
+        Returns the trainers ordered by display name. The list is paginated with `page` and
+        `pageSize`; `total` is the number of trainers across all pages.
+      parameters:
+        - name: page
+          in: query
+          description: Page number, starting at 1
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          description: Number of trainers per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        "200":
+          description: One page of trainers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrainersPage"
+        "400":
+          $ref: "#/components/responses/InvalidInput"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/users/onboard:
+    post:
+      operationId: onboardUser
+      summary: Onboard the user from the session
+      description: >
+        Creates the user from the session (uuid and role), with a zero balance. The role is the
+        session's trainer or attendee role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OnboardUserRequest"
+      responses:
+        "204":
+          description: User onboarded
+        "400":
+          $ref: "#/components/responses/InvalidInput"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/users/balance/top-up:
+    post:
+      operationId: topUpBalance
+      summary: Top up the balance of the session user
+      description: >
+        Adds `amount` to the balance of the user from the session and returns the new balance.
+        There is no payment step yet.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TopUpRequest"
+      responses:
+        "200":
+          description: The balance after the top-up
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Balance"
+        "400":
+          $ref: "#/components/responses/InvalidInput"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  responses:
+    InvalidInput:
+      description: The request is not valid
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: Missing or invalid access token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: The user is not onboarded
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Conflict:
+      description: The user is already onboarded
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  schemas:
+    TopUpRequest:
+      type: object
+      required: [amount]
+      properties:
+        amount:
+          type: integer
+          minimum: 1
+          maximum: 1000000
+    Balance:
+      type: object
+      required: [balance]
+      properties:
+        balance:
+          type: integer
+    OnboardUserRequest:
+      type: object
+      required: [displayName]
+      properties:
+        displayName:
+          type: string
+    TrainersPage:
+      type: object
+      required: [items, pagination]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Trainer"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+    Pagination:
+      type: object
+      required: [page, pageSize, total]
+      properties:
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+          description: Number of items across all pages
+    Trainer:
+      type: object
+      required: [uuid, displayName, balance]
+      properties:
+        uuid:
+          type: string
+        displayName:
+          type: string
+        balance:
+          type: integer
+    Error:
+      type: object
+      required: [message, slug]
+      properties:
+        message:
+          type: string
+        slug:
+          type: string
+        details:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErrorDetail"
+    ErrorDetail:
+      type: object
+      properties:
+        entity_type:
+          type: string
+        entity_id:
+          type: string
+        error_slug:
+          type: string
+        message:
+          type: string

@@ -1,0 +1,209 @@
+openapi: 3.0.3
+info:
+  title: Trainers API
+  version: 1.0.0
+servers:
+  - url: http://localhost:4000
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/trainer/hours:
+    get:
+      operationId: getTrainerHours
+      summary: Get the trainer's hours in a date range
+      description: >
+        Returns every day from `from` to `to` (both inclusive, in UTC), each with all the hours
+        between the minimum and maximum UTC hour. Hours that are not stored are returned as
+        not available.
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Dates with their hours
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Date"
+        "400":
+          $ref: "#/components/responses/InvalidInput"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/trainers/{trainerUuid}/hours:
+    get:
+      operationId: getTrainerHoursByUuid
+      summary: Get a trainer's hours in a date range
+      description: >
+        Same as `getTrainerHours`, but for the trainer in the path. When `status` is set, only the
+        hours with that status are returned and days left without hours are omitted.
+      parameters:
+        - name: trainerUuid
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [availability, not-availability, training-scheduled]
+      responses:
+        "200":
+          description: Dates with their hours
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Date"
+        "400":
+          $ref: "#/components/responses/InvalidInput"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/trainer/hours/available:
+    put:
+      operationId: makeHoursAvailable
+      summary: Make hours available
+      requestBody:
+        $ref: "#/components/requestBodies/Hours"
+      responses:
+        "204":
+          description: Hours are now available
+        "400":
+          $ref: "#/components/responses/InvalidInput"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/trainer/hours/not-available:
+    put:
+      operationId: makeHoursNotAvailable
+      summary: Make hours not available
+      requestBody:
+        $ref: "#/components/requestBodies/Hours"
+      responses:
+        "204":
+          description: Hours are now not available
+        "400":
+          $ref: "#/components/responses/InvalidInput"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  requestBodies:
+    Hours:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/HoursRequest"
+  responses:
+    InvalidInput:
+      description: The request is not valid
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: Missing or invalid access token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Conflict:
+      description: Some of the hours have an incorrect status
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  schemas:
+    HoursRequest:
+      type: object
+      required: [hours]
+      properties:
+        hours:
+          type: array
+          items:
+            type: string
+            format: date-time
+    HourStatus:
+      type: string
+      enum: [availability, not-availability, training-scheduled]
+      x-go-type: domain.HourStatus
+      x-go-type-import:
+        path: backend/internal/trainers/domain
+    Hour:
+      type: object
+      required: [hour, status]
+      properties:
+        hour:
+          type: string
+          format: date-time
+        status:
+          $ref: "#/components/schemas/HourStatus"
+    Date:
+      type: object
+      required: [date, hasFreeHours, hours]
+      properties:
+        date:
+          type: string
+          format: date-time
+        hasFreeHours:
+          type: boolean
+        hours:
+          type: array
+          items:
+            $ref: "#/components/schemas/Hour"
+    Error:
+      type: object
+      required: [message, slug]
+      properties:
+        message:
+          type: string
+        slug:
+          type: string
+        details:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErrorDetail"
+    ErrorDetail:
+      type: object
+      properties:
+        entity_type:
+          type: string
+        entity_id:
+          type: string
+        error_slug:
+          type: string
+        message:
+          type: string
