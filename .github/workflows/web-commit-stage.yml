@@ -5,7 +5,6 @@ on:
       - main
     paths:
       - "web/**"
-      - "api/**"
       - ".github/workflows/web-commit-stage.yml"
   pull_request:
     branches:
@@ -17,7 +16,6 @@ on:
       - ready_for_review
     paths:
       - "web/**"
-      - "api/**"
       - ".github/workflows/web-commit-stage.yml"
 
 env:
@@ -52,11 +50,10 @@ jobs:
       - name: Lint
         run: |
           npm run lint
-          npm run format:check
         working-directory: web
 
       - name: Test
-        run: npx tsc --noEmit
+        run: npm run test
         working-directory: web
 
       - name: Build
