@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	common "github.com/quangbach27/golang-common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -35,7 +36,7 @@ func TestScheduleTraining(t *testing.T) {
 	t.Run("attendee schedules an available hour", func(t *testing.T) {
 		t.Parallel()
 
-		trainer, attendee := newUser(shared.RoleTrainer), newUser(shared.RoleAttendee)
+		trainer, attendee := newUser(shared.RoleTrainer), newOnboardedAttendee(ctx, t, clients)
 		hour := tests.TomorrowHours(t, 1)[0]
 		tests.MakeHoursAvailable(ctx, t, clients, trainer.Token, []time.Time{hour})
 
@@ -54,17 +55,17 @@ func TestScheduleTraining(t *testing.T) {
 		hour := tests.TomorrowHours(t, 1)[0]
 		tests.MakeHoursAvailable(ctx, t, clients, trainer.Token, []time.Time{hour})
 
-		first := scheduleTraining(ctx, t, clients, newUser(shared.RoleAttendee).Token, body(trainer, hour))
+		first := scheduleTraining(ctx, t, clients, newOnboardedAttendee(ctx, t, clients).Token, body(trainer, hour))
 		require.Equal(t, http.StatusCreated, first.StatusCode(), string(first.Body))
 
-		second := scheduleTraining(ctx, t, clients, newUser(shared.RoleAttendee).Token, body(trainer, hour))
+		second := scheduleTraining(ctx, t, clients, newOnboardedAttendee(ctx, t, clients).Token, body(trainer, hour))
 		assert.Equal(t, http.StatusConflict, second.StatusCode(), string(second.Body))
 	})
 
 	t.Run("an hour that was never made available conflicts", func(t *testing.T) {
 		t.Parallel()
 
-		trainer, attendee := newUser(shared.RoleTrainer), newUser(shared.RoleAttendee)
+		trainer, attendee := newUser(shared.RoleTrainer), newOnboardedAttendee(ctx, t, clients)
 		hour := tests.TomorrowHours(t, 1)[0]
 
 		resp := scheduleTraining(ctx, t, clients, attendee.Token, body(trainer, hour))
@@ -99,7 +100,7 @@ func TestScheduleTraining(t *testing.T) {
 	t.Run("empty trainer username is rejected", func(t *testing.T) {
 		t.Parallel()
 
-		trainer, attendee := newUser(shared.RoleTrainer), newUser(shared.RoleAttendee)
+		trainer, attendee := newUser(shared.RoleTrainer), newOnboardedAttendee(ctx, t, clients)
 		hour := tests.TomorrowHours(t, 1)[0]
 		tests.MakeHoursAvailable(ctx, t, clients, trainer.Token, []time.Time{hour})
 
@@ -115,12 +116,12 @@ func TestScheduleTraining(t *testing.T) {
 	t.Run("invalid input is rejected and the hour is untouched", func(t *testing.T) {
 		t.Parallel()
 
-		trainer, attendee := newUser(shared.RoleTrainer), newUser(shared.RoleAttendee)
+		trainer, attendee := newUser(shared.RoleTrainer), newOnboardedAttendee(ctx, t, clients)
 		hour := tests.TomorrowHours(t, 1)[0]
 		tests.MakeHoursAvailable(ctx, t, clients, trainer.Token, []time.Time{hour})
 
 		invalid := body(trainer, hour)
-		invalid.Notes = ""
+		invalid.Hour = time.Now().Add(-time.Hour)
 
 		resp := scheduleTraining(ctx, t, clients, attendee.Token, invalid)
 
@@ -155,7 +156,7 @@ func TestGetUserTrainings(t *testing.T) {
 	t.Run("trainer and attendee see their upcoming trainings, soonest first", func(t *testing.T) {
 		t.Parallel()
 
-		trainer, attendee := newUser(shared.RoleTrainer), newUser(shared.RoleAttendee)
+		trainer, attendee := newUser(shared.RoleTrainer), newOnboardedAttendee(ctx, t, clients)
 		hours := tests.TomorrowHours(t, 2)
 		tests.MakeHoursAvailable(ctx, t, clients, trainer.Token, hours)
 
@@ -188,7 +189,7 @@ func TestGetUserTrainings(t *testing.T) {
 	t.Run("an unrelated user has no trainings", func(t *testing.T) {
 		t.Parallel()
 
-		got := getTrainings(t, newUser(shared.RoleAttendee).Token)
+		got := getTrainings(t, newOnboardedAttendee(ctx, t, clients).Token)
 
 		assert.Empty(t, got)
 	})
@@ -196,7 +197,7 @@ func TestGetUserTrainings(t *testing.T) {
 	t.Run("pages split the trainings and report the total", func(t *testing.T) {
 		t.Parallel()
 
-		trainer, attendee := newUser(shared.RoleTrainer), newUser(shared.RoleAttendee)
+		trainer, attendee := newUser(shared.RoleTrainer), newOnboardedAttendee(ctx, t, clients)
 		hours := tests.TomorrowHours(t, 3)
 		tests.MakeHoursAvailable(ctx, t, clients, trainer.Token, hours)
 		for _, hour := range hours {
@@ -234,7 +235,7 @@ func TestGetUserTrainings(t *testing.T) {
 	t.Run("invalid page or page size is rejected", func(t *testing.T) {
 		t.Parallel()
 
-		token := newUser(shared.RoleAttendee).Token
+		token := newOnboardedAttendee(ctx, t, clients).Token
 		zero, tooMany := 0, 51
 
 		for name, params := range map[string]*trainingsclient.GetUserTrainingsParams{
@@ -255,5 +256,103 @@ func TestGetUserTrainings(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode(), string(resp.Body))
+	})
+}
+
+func TestCancelTraining(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	clients := tests.NewTestClients(t)
+
+	schedule := func(t *testing.T) (trainer, attendee testUser, hour time.Time, trainingUUID string) {
+		t.Helper()
+
+		trainer, attendee = newUser(shared.RoleTrainer), newOnboardedAttendee(ctx, t, clients)
+		hour = tests.TomorrowHours(t, 1)[0]
+		tests.MakeHoursAvailable(ctx, t, clients, trainer.Token, []time.Time{hour})
+
+		resp := scheduleTraining(ctx, t, clients, attendee.Token, trainingsclient.ScheduleTrainingRequest{
+			TrainerUuid:     trainer.UUID,
+			TrainerUsername: tests.Username(trainer.UUID),
+			Hour:            hour,
+			Notes:           "legs day",
+		})
+		require.Equal(t, http.StatusCreated, resp.StatusCode(), string(resp.Body))
+		require.NotNil(t, resp.JSON201)
+
+		return trainer, attendee, hour, resp.JSON201.Uuid
+	}
+
+	t.Run("attendee cancels and the hour is available again", func(t *testing.T) {
+		t.Parallel()
+
+		trainer, attendee, hour, trainingUUID := schedule(t)
+
+		resp, err := clients.Trainings.CancelTrainingWithResponse(ctx, trainingUUID, tests.WithAuth(attendee.Token))
+		require.NoError(t, err)
+
+		require.Equal(t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
+		assert.Equal(t, domain.Available, hourStatus(ctx, t, clients, trainer, hour))
+	})
+
+	t.Run("trainer cancels", func(t *testing.T) {
+		t.Parallel()
+
+		trainer, _, _, trainingUUID := schedule(t)
+
+		resp, err := clients.Trainings.CancelTrainingWithResponse(ctx, trainingUUID, tests.WithAuth(trainer.Token))
+		require.NoError(t, err)
+
+		assert.Equal(t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
+	})
+
+	t.Run("a training can't be canceled twice", func(t *testing.T) {
+		t.Parallel()
+
+		_, attendee, _, trainingUUID := schedule(t)
+
+		first, err := clients.Trainings.CancelTrainingWithResponse(ctx, trainingUUID, tests.WithAuth(attendee.Token))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNoContent, first.StatusCode(), string(first.Body))
+
+		second, err := clients.Trainings.CancelTrainingWithResponse(ctx, trainingUUID, tests.WithAuth(attendee.Token))
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusConflict, second.StatusCode(), string(second.Body))
+	})
+
+	t.Run("a stranger can't cancel", func(t *testing.T) {
+		t.Parallel()
+
+		_, _, _, trainingUUID := schedule(t)
+
+		resp, err := clients.Trainings.CancelTrainingWithResponse(
+			ctx, trainingUUID, tests.WithAuth(newOnboardedAttendee(ctx, t, clients).Token),
+		)
+		require.NoError(t, err)
+
+		assert.Equal(t, http.StatusForbidden, resp.StatusCode(), string(resp.Body))
+	})
+
+	t.Run("an unknown training is not found", func(t *testing.T) {
+		t.Parallel()
+
+		resp, err := clients.Trainings.CancelTrainingWithResponse(
+			ctx, common.NewUUIDv7().String(), tests.WithAuth(newOnboardedAttendee(ctx, t, clients).Token),
+		)
+		require.NoError(t, err)
+
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+	})
+
+	t.Run("an invalid uuid is a bad request", func(t *testing.T) {
+		t.Parallel()
+
+		resp, err := clients.Trainings.CancelTrainingWithResponse(
+			ctx, "not-a-uuid", tests.WithAuth(newOnboardedAttendee(ctx, t, clients).Token),
+		)
+		require.NoError(t, err)
+
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
 	})
 }

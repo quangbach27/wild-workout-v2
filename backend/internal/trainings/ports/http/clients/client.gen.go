@@ -81,6 +81,9 @@ type Forbidden = Error
 // InvalidInput defines model for InvalidInput.
 type InvalidInput = Error
 
+// NotFound defines model for NotFound.
+type NotFound = Error
+
 // Unauthorized defines model for Unauthorized.
 type Unauthorized = Error
 
@@ -194,6 +197,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /api/v1/trainings (the `ScheduleTraining` operationId).
 	ScheduleTraining(ctx context.Context, body ScheduleTrainingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CancelTraining Cancel a training
+	//
+	// The trainer or the attendee (taken from the session) cancels the training and the trainer's hour becomes available again. The attendee gets the credit back when the training is canceled at least 24 hours before the hour.
+	//
+	// Corresponds with POST /api/v1/trainings/{trainingUuid}/cancel (the `CancelTraining` operationId).
+	CancelTraining(ctx context.Context, trainingUuid string, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 // GetUserTrainings Get the user's upcoming trainings
@@ -241,6 +251,23 @@ func (c *Client) ScheduleTrainingWithBody(ctx context.Context, contentType strin
 // Corresponds with POST /api/v1/trainings (the `ScheduleTraining` operationId).
 func (c *Client) ScheduleTraining(ctx context.Context, body ScheduleTrainingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewScheduleTrainingRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CancelTraining Cancel a training
+//
+// The trainer or the attendee (taken from the session) cancels the training and the trainer's hour becomes available again. The attendee gets the credit back when the training is canceled at least 24 hours before the hour.
+//
+// Corresponds with POST /api/v1/trainings/{trainingUuid}/cancel (the `CancelTraining` operationId).
+func (c *Client) CancelTraining(ctx context.Context, trainingUuid string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCancelTrainingRequest(c.Server, trainingUuid)
 	if err != nil {
 		return nil, err
 	}
@@ -357,6 +384,40 @@ func NewScheduleTrainingRequestWithBody(server string, contentType string, body 
 	return req, nil
 }
 
+// NewCancelTrainingRequest constructs an http.Request for the CancelTraining method
+func NewCancelTrainingRequest(server string, trainingUuid string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "trainingUuid", trainingUuid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/trainings/%s/cancel", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -427,6 +488,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /api/v1/trainings (the `ScheduleTraining` operationId).
 	ScheduleTrainingWithResponse(ctx context.Context, body ScheduleTrainingJSONRequestBody, reqEditors ...RequestEditorFn) (*ScheduleTrainingClientResponse, error)
+
+	// CancelTrainingWithResponse Cancel a training
+	//
+	// The trainer or the attendee (taken from the session) cancels the training and the trainer's hour becomes available again. The attendee gets the credit back when the training is canceled at least 24 hours before the hour.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/v1/trainings/{trainingUuid}/cancel (the `CancelTraining` operationId).
+	CancelTrainingWithResponse(ctx context.Context, trainingUuid string, reqEditors ...RequestEditorFn) (*CancelTrainingClientResponse, error)
 }
 
 type GetUserTrainingsClientResponse struct {
@@ -553,6 +623,75 @@ func (r ScheduleTrainingClientResponse) ContentType() string {
 	return ""
 }
 
+type CancelTrainingClientResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *InvalidInput
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CancelTrainingClientResponse) GetJSON400() *InvalidInput {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CancelTrainingClientResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CancelTrainingClientResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CancelTrainingClientResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CancelTrainingClientResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r CancelTrainingClientResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CancelTrainingClientResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CancelTrainingClientResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CancelTrainingClientResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // GetUserTrainingsWithResponse Get the user's upcoming trainings
 //
 // Returns the trainings, soonest first, where the user from the session is the trainer or the attendee. Only trainings after now are returned, including canceled ones (see `canceled`). The list is paginated with `page` and `pageSize`; `total` is the number of trainings across all pages.
@@ -596,6 +735,21 @@ func (c *ClientWithResponses) ScheduleTrainingWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseScheduleTrainingClientResponse(rsp)
+}
+
+// CancelTrainingWithResponse Cancel a training
+//
+// The trainer or the attendee (taken from the session) cancels the training and the trainer's hour becomes available again. The attendee gets the credit back when the training is canceled at least 24 hours before the hour.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/v1/trainings/{trainingUuid}/cancel (the `CancelTraining` operationId).
+func (c *ClientWithResponses) CancelTrainingWithResponse(ctx context.Context, trainingUuid string, reqEditors ...RequestEditorFn) (*CancelTrainingClientResponse, error) {
+	rsp, err := c.CancelTraining(ctx, trainingUuid, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCancelTrainingClientResponse(rsp)
 }
 
 // ParseGetUserTrainingsClientResponse parses an HTTP response from a GetUserTrainingsWithResponse call
@@ -679,6 +833,63 @@ func ParseScheduleTrainingClientResponse(rsp *http.Response) (*ScheduleTrainingC
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCancelTrainingClientResponse parses an HTTP response from a CancelTrainingWithResponse call
+func ParseCancelTrainingClientResponse(rsp *http.Response) (*CancelTrainingClientResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CancelTrainingClientResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidInput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
 		var dest Conflict

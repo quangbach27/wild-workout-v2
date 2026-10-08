@@ -12,6 +12,7 @@ import (
 	"backend/internal/shared"
 	"backend/internal/trainings/app/commands"
 	"backend/internal/trainings/app/queries"
+	"backend/internal/trainings/domain"
 )
 
 type Handler struct {
@@ -81,6 +82,45 @@ func (h *Handler) ScheduleTraining(
 	}
 
 	return ScheduleTraining201JSONResponse{Uuid: trainingUUID.String()}, nil
+}
+
+func (h *Handler) CancelTraining(
+	ctx context.Context,
+	request CancelTrainingRequestObject,
+) (CancelTrainingResponseObject, error) {
+	session, err := sessionFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	username, _ := session.Extra["username"].(string)
+	if username == "" {
+		return nil, common.NewUnauthorizedError("missing-username", "session has no username")
+	}
+
+	role := shared.RoleAttendee
+	if slices.Contains(session.Roles, shared.RoleTrainer.String()) {
+		role = shared.RoleTrainer
+	}
+
+	user, err := domain.NewUser(session.UserID, username, role)
+	if err != nil {
+		return nil, err
+	}
+
+	var trainingUUID domain.TrainingUUID
+	if err := trainingUUID.UnmarshalText([]byte(request.TrainingUuid)); err != nil {
+		return nil, common.NewInvalidInputError("invalid-training-uuid", "training uuid is not valid")
+	}
+
+	if err := h.commands.CancelTraining(ctx, commands.CancelTrainingCmd{
+		TrainingUUID: trainingUUID,
+		User:         user,
+	}); err != nil {
+		return nil, err
+	}
+
+	return CancelTraining204Response{}, nil
 }
 
 func (h *Handler) GetUserTrainings(

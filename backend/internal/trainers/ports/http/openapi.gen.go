@@ -17,6 +17,27 @@ import (
 	"github.com/oapi-codegen/runtime"
 )
 
+// Defines values for GetTrainerHoursByUuidParamsStatus.
+const (
+	Availability      GetTrainerHoursByUuidParamsStatus = "availability"
+	NotAvailability   GetTrainerHoursByUuidParamsStatus = "not-availability"
+	TrainingScheduled GetTrainerHoursByUuidParamsStatus = "training-scheduled"
+)
+
+// Valid indicates whether the value is a known member of the GetTrainerHoursByUuidParamsStatus enum.
+func (e GetTrainerHoursByUuidParamsStatus) Valid() bool {
+	switch e {
+	case Availability:
+		return true
+	case NotAvailability:
+		return true
+	case TrainingScheduled:
+		return true
+	default:
+		return false
+	}
+}
+
 // Date defines model for Date.
 type Date struct {
 	Date         time.Time `json:"date"`
@@ -71,6 +92,16 @@ type GetTrainerHoursParams struct {
 	To   time.Time `form:"to" json:"to"`
 }
 
+// GetTrainerHoursByUuidParams defines parameters for GetTrainerHoursByUuid.
+type GetTrainerHoursByUuidParams struct {
+	From   time.Time                          `form:"from" json:"from"`
+	To     time.Time                          `form:"to" json:"to"`
+	Status *GetTrainerHoursByUuidParamsStatus `form:"status,omitempty" json:"status,omitempty"`
+}
+
+// GetTrainerHoursByUuidParamsStatus defines parameters for GetTrainerHoursByUuid.
+type GetTrainerHoursByUuidParamsStatus string
+
 // MakeHoursAvailableJSONRequestBody defines body for MakeHoursAvailable for application/json ContentType.
 type MakeHoursAvailableJSONRequestBody = HoursRequest
 
@@ -88,6 +119,9 @@ type ServerInterface interface {
 	// MakeHoursNotAvailable Make hours not available
 	// (PUT /api/v1/trainer/hours/not-available)
 	MakeHoursNotAvailable(ctx *echo.Context) error
+	// GetTrainerHoursByUuid Get a trainer's hours in a date range
+	// (GET /api/v1/trainers/{trainerUuid}/hours)
+	GetTrainerHoursByUuid(ctx *echo.Context, trainerUuid string, params GetTrainerHoursByUuidParams) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -135,6 +169,45 @@ func (w *ServerInterfaceWrapper) MakeHoursNotAvailable(ctx *echo.Context) error 
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.MakeHoursNotAvailable(ctx)
+	return err
+}
+
+// GetTrainerHoursByUuid converts echo context to params.
+func (w *ServerInterfaceWrapper) GetTrainerHoursByUuid(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "trainerUuid" -------------
+	var trainerUuid string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "trainerUuid", ctx.Param("trainerUuid"), &trainerUuid, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter trainerUuid: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetTrainerHoursByUuidParams
+	// ------------- Required query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "from", ctx.QueryParams(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter from: %s", err))
+	}
+
+	// ------------- Required query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "to", ctx.QueryParams(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
+	}
+
+	// ------------- Optional query parameter "status" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "status", ctx.QueryParams(), &params.Status, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter status: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetTrainerHoursByUuid(ctx, trainerUuid, params)
 	return err
 }
 
@@ -186,6 +259,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	}
 
 	router.GET(options.BaseURL+"/api/v1/trainer/hours", wrapper.GetTrainerHours, options.OperationMiddlewares["getTrainerHours"]...)
+	router.GET(options.BaseURL+"/api/v1/trainers/:trainerUuid/hours", wrapper.GetTrainerHoursByUuid, options.OperationMiddlewares["getTrainerHoursByUuid"]...)
 	router.PUT(options.BaseURL+"/api/v1/trainer/hours/available", wrapper.MakeHoursAvailable, options.OperationMiddlewares["makeHoursAvailable"]...)
 	router.PUT(options.BaseURL+"/api/v1/trainer/hours/not-available", wrapper.MakeHoursNotAvailable, options.OperationMiddlewares["makeHoursNotAvailable"]...)
 
@@ -363,6 +437,57 @@ func (response MakeHoursNotAvailable409JSONResponse) VisitMakeHoursNotAvailableR
 	return err
 }
 
+type GetTrainerHoursByUuidRequestObject struct {
+	TrainerUuid string `json:"trainerUuid"`
+	Params      GetTrainerHoursByUuidParams
+}
+
+type GetTrainerHoursByUuidResponseObject interface {
+	VisitGetTrainerHoursByUuidResponse(w http.ResponseWriter) error
+}
+
+type GetTrainerHoursByUuid200JSONResponse []Date
+
+func (response GetTrainerHoursByUuid200JSONResponse) VisitGetTrainerHoursByUuidResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetTrainerHoursByUuid400JSONResponse struct{ InvalidInputJSONResponse }
+
+func (response GetTrainerHoursByUuid400JSONResponse) VisitGetTrainerHoursByUuidResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetTrainerHoursByUuid401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetTrainerHoursByUuid401JSONResponse) VisitGetTrainerHoursByUuidResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// GetTrainerHours Get the trainer's hours in a date range
@@ -374,6 +499,9 @@ type StrictServerInterface interface {
 	// MakeHoursNotAvailable Make hours not available
 	// (PUT /api/v1/trainer/hours/not-available)
 	MakeHoursNotAvailable(ctx context.Context, request MakeHoursNotAvailableRequestObject) (MakeHoursNotAvailableResponseObject, error)
+	// GetTrainerHoursByUuid Get a trainer's hours in a date range
+	// (GET /api/v1/trainers/{trainerUuid}/hours)
+	GetTrainerHoursByUuid(ctx context.Context, request GetTrainerHoursByUuidRequestObject) (GetTrainerHoursByUuidResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx *echo.Context, request any) (any, error)
@@ -485,6 +613,32 @@ func (sh *strictHandler) MakeHoursNotAvailable(ctx *echo.Context) error {
 		return err
 	} else if validResponse, ok := response.(MakeHoursNotAvailableResponseObject); ok {
 		return validResponse.VisitMakeHoursNotAvailableResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// GetTrainerHoursByUuid operation middleware
+func (sh *strictHandler) GetTrainerHoursByUuid(ctx *echo.Context, trainerUuid string, params GetTrainerHoursByUuidParams) error {
+	var request GetTrainerHoursByUuidRequestObject
+
+	request.TrainerUuid = trainerUuid
+	request.Params = params
+
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetTrainerHoursByUuid(ctx.Request().Context(), request.(GetTrainerHoursByUuidRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetTrainerHoursByUuid")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(GetTrainerHoursByUuidResponseObject); ok {
+		return validResponse.VisitGetTrainerHoursByUuidResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}

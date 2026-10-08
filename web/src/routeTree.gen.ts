@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteRouteImport } from './routes/_app/route'
 import { Route as AppSetScheduleRouteImport } from './routes/_app/set-schedule'
 import { Route as AppTrainingsRouteImport } from './routes/_app/trainings'
+import { Route as AppTrainingsScheduleRouteImport } from './routes/_app/trainings_.schedule'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -33,16 +34,23 @@ const AppTrainingsRoute = AppTrainingsRouteImport.update({
   path: '/trainings',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppTrainingsScheduleRoute = AppTrainingsScheduleRouteImport.update({
+  id: '/trainings_/schedule',
+  path: '/trainings/schedule',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/set-schedule': typeof AppSetScheduleRoute
   '/trainings': typeof AppTrainingsRoute
+  '/trainings/schedule': typeof AppTrainingsScheduleRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/set-schedule': typeof AppSetScheduleRoute
   '/trainings': typeof AppTrainingsRoute
+  '/trainings/schedule': typeof AppTrainingsScheduleRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -50,13 +58,20 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteRouteWithChildren
   '/_app/set-schedule': typeof AppSetScheduleRoute
   '/_app/trainings': typeof AppTrainingsRoute
+  '/_app/trainings_/schedule': typeof AppTrainingsScheduleRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/set-schedule' | '/trainings'
+  fullPaths: '/' | '/set-schedule' | '/trainings' | '/trainings/schedule'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/set-schedule' | '/trainings'
-  id: '__root__' | '/' | '/_app' | '/_app/set-schedule' | '/_app/trainings'
+  to: '/' | '/set-schedule' | '/trainings' | '/trainings/schedule'
+  id:
+    | '__root__'
+    | '/'
+    | '/_app'
+    | '/_app/set-schedule'
+    | '/_app/trainings'
+    | '/_app/trainings_/schedule'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -94,17 +109,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTrainingsRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/_app/trainings_/schedule': {
+      id: '/_app/trainings_/schedule'
+      path: '/trainings/schedule'
+      fullPath: '/trainings/schedule'
+      preLoaderRoute: typeof AppTrainingsScheduleRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
   }
 }
 
 interface AppRouteRouteChildren {
   AppSetScheduleRoute: typeof AppSetScheduleRoute
   AppTrainingsRoute: typeof AppTrainingsRoute
+  AppTrainingsScheduleRoute: typeof AppTrainingsScheduleRoute
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppSetScheduleRoute: AppSetScheduleRoute,
   AppTrainingsRoute: AppTrainingsRoute,
+  AppTrainingsScheduleRoute: AppTrainingsScheduleRoute,
 }
 
 const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(

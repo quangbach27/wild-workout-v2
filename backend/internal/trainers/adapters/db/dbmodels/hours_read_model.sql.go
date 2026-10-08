@@ -8,6 +8,8 @@ package dbmodels
 import (
 	"context"
 	"time"
+
+	"backend/internal/trainers/domain"
 )
 
 const getHoursInRange = `-- name: GetHoursInRange :many
@@ -16,6 +18,7 @@ FROM trainers.hours
 WHERE trainer_uuid = $1
     AND hour >= $2::timestamptz
     AND hour < $3::timestamptz
+    AND ($4::trainers.hour_status IS NULL OR status = $4)
 ORDER BY hour
 `
 
@@ -23,10 +26,16 @@ type GetHoursInRangeParams struct {
 	TrainerUuid string
 	DateFrom    time.Time
 	DateTo      time.Time
+	Status      *domain.HourStatus
 }
 
 func (q *Queries) GetHoursInRange(ctx context.Context, arg GetHoursInRangeParams) ([]TrainersHour, error) {
-	rows, err := q.db.Query(ctx, getHoursInRange, arg.TrainerUuid, arg.DateFrom, arg.DateTo)
+	rows, err := q.db.Query(ctx, getHoursInRange,
+		arg.TrainerUuid,
+		arg.DateFrom,
+		arg.DateTo,
+		arg.Status,
+	)
 	if err != nil {
 		return nil, err
 	}

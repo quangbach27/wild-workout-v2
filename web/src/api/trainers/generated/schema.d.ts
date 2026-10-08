@@ -24,6 +24,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    '/api/v1/trainers/{trainerUuid}/hours': {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a trainer's hours in a date range
+         * @description Same as `getTrainerHours`, but for the trainer in the path. When `status` is set, only the hours with that status are returned and days left without hours are omitted.
+         */
+        get: operations['getTrainerHoursByUuid'];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     '/api/v1/trainer/hours/available': {
         parameters: {
             query?: never;
@@ -140,6 +160,34 @@ export interface operations {
             };
             header?: never;
             path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dates with their hours */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['Date'][];
+                };
+            };
+            400: components['responses']['InvalidInput'];
+            401: components['responses']['Unauthorized'];
+        };
+    };
+    getTrainerHoursByUuid: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                status?: 'availability' | 'not-availability' | 'training-scheduled';
+            };
+            header?: never;
+            path: {
+                trainerUuid: string;
+            };
             cookie?: never;
         };
         requestBody?: never;

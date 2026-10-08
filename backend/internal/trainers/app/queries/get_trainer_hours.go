@@ -5,6 +5,8 @@ import (
 	"time"
 
 	common "github.com/quangbach27/golang-common"
+
+	"backend/internal/trainers/domain"
 )
 
 type TrainerHoursReadModel interface {
@@ -15,6 +17,9 @@ type GetTrainerHoursQuery struct {
 	TrainerUUID string
 	DateFrom    time.Time
 	DateTo      time.Time
+	// Status keeps only the hours with this status (and drops the days left without hours).
+	// Nil or zero keeps every hour.
+	Status *domain.HourStatus
 }
 
 func (q GetTrainerHoursQuery) Validate() error {

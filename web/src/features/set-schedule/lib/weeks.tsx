@@ -1,4 +1,5 @@
-const FUTURE_WEEKS = 6;
+import { env } from '@/lib/env';
+
 const DAYS_PER_WEEK = 7;
 
 export type Week = {
@@ -14,8 +15,8 @@ type buildWeeksConfig = {
   futureWeeks?: number;
 };
 
-export function buildWeeks(config: buildWeeksConfig): Week[] {
-  const { futureWeeks = FUTURE_WEEKS } = config;
+export function buildWeeks(config: buildWeeksConfig = {}): Week[] {
+  const { futureWeeks = env.VITE_FUTURE_WEEKS } = config;
 
   // Earliest bookable time: next full hour after now + 1h
   const startTime = new Date();
@@ -28,14 +29,8 @@ export function buildWeeks(config: buildWeeksConfig): Week[] {
   return Array.from({ length: futureWeeks }, (_, i) => {
     const offset = i * DAYS_PER_WEEK;
 
-    // First tab starts at startTime so past hours can't be selected;
-    // later tabs start at local midnight (Date handles month/year overflow and DST)
     const from = i === 0 ? startTime : new Date(year, month, day + offset);
-
-    // Inclusive last day, used only for the label
     const lastDay = new Date(year, month, day + offset + DAYS_PER_WEEK - 1);
-
-    // Exclusive end: local midnight after the last day
     const to = new Date(year, month, day + offset + DAYS_PER_WEEK);
 
     const sameMonth =

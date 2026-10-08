@@ -1,15 +1,17 @@
 import type React from 'react';
 
-import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
 
+import MobileNav from './mobile-nav';
 import NavLinks from './nav-links';
+import UserInfo from './user-info';
 
 export default function AppLayout(props: { children: React.ReactNode }) {
   return (
     <div className="flex h-dvh flex-col">
       <header className="bg-background text-foreground dark flex h-16 items-center justify-between gap-5 px-2 md:px-6">
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          <MobileNav />
           <svg width="44" height="24" viewBox="0 0 48 26" fill="none">
             <path
               d="M3 5.5 L8.74 23 L13.5 1.8 L18.26 23 L24 5.5"
@@ -33,12 +35,9 @@ export default function AppLayout(props: { children: React.ReactNode }) {
             Wild workout
           </h1>
         </div>
-        <NavLinks />
-        <div className="flex items-center gap-3">
-          <Avatar className="hidden md:block">
-            <AvatarFallback>Tr</AvatarFallback>
-          </Avatar>
-          <span className="hidden md:block">Trainer</span>
+        <NavLinks className="hidden flex-1 md:flex" />
+        <div className="hidden items-center gap-3 md:flex">
+          <UserInfo />
           <Button size="lg" variant="outline">
             Logout
           </Button>
@@ -49,8 +48,8 @@ export default function AppLayout(props: { children: React.ReactNode }) {
         {props.children}
       </div>
 
-      <footer className="text-muted-foreground space-y-2 p-2 md:p-8">
-        <div className="hidden gap-3 md:flex">
+      <footer className="text-muted-foreground flex flex-row justify-between space-y-2 p-2 md:px-4 md:py-2">
+        <div className="hidden flex-row gap-3 md:flex">
           <span>© Wild Workouts 2026</span>
           <a
             href="https://github.com/quangbach27/wild-workout-v2"

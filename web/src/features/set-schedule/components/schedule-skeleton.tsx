@@ -24,7 +24,7 @@ export default function ScheduleSkeleton() {
           {Array.from({ length: HOURS }, (_, h) => (
             <Skeleton
               key={h}
-              className="bg-hour-closed border-hour-closed-border h-18 rounded-xl border"
+              className="bg-hour-closed-border h-18 rounded-xl"
               style={{ animationDelay: `${(d + h) * 60}ms` }}
             />
           ))}

@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	common "github.com/quangbach27/golang-common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -185,6 +186,109 @@ func TestGetTrainerHours(t *testing.T) {
 		resp, err := clients.Trainers.GetTrainerHoursWithResponse(
 			ctx,
 			&trainersclient.GetTrainerHoursParams{From: from, To: from},
+		)
+
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode())
+	})
+}
+
+func TestGetTrainerHoursByUUID(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	clients := tests.NewTestClients(t)
+
+	t.Run("another user reads only the available hours", func(t *testing.T) {
+		t.Parallel()
+
+		trainer := newTrainer(t)
+		attendeeToken := tests.NewSession(common.NewUUIDv7().String())
+		hours := tests.TomorrowHours(t, 2)
+		tests.MakeHoursAvailable(ctx, t, clients, trainer.Token, hours)
+		makeHoursNotAvailable(ctx, t, clients, trainer, hours[1:])
+
+		status := trainersclient.Availability
+		dates := getTrainerHoursByUUID(ctx, t, clients, attendeeToken, trainer.UUID,
+			&trainersclient.GetTrainerHoursByUuidParams{From: hours[0], To: hours[0], Status: &status})
+
+		require.Len(t, dates, 1)
+		assert.True(t, dates[0].HasFreeHours)
+		require.Len(t, dates[0].Hours, 1)
+		assert.True(t, dates[0].Hours[0].Hour.Equal(hours[0]))
+		assert.Equal(t, domain.Available, dates[0].Hours[0].Status)
+	})
+
+	t.Run("without status returns every hour", func(t *testing.T) {
+		t.Parallel()
+
+		trainer := newTrainer(t)
+		attendeeToken := tests.NewSession(common.NewUUIDv7().String())
+		hours := tests.TomorrowHours(t, 1)
+		tests.MakeHoursAvailable(ctx, t, clients, trainer.Token, hours)
+
+		dates := getTrainerHoursByUUID(ctx, t, clients, attendeeToken, trainer.UUID,
+			&trainersclient.GetTrainerHoursByUuidParams{From: hours[0], To: hours[0]})
+
+		require.Len(t, dates, 1)
+		cfg := hourFactoryConfig(t)
+		assert.Len(t, dates[0].Hours, cfg.MaxUtcHour-cfg.MinUtcHour+1)
+	})
+
+	t.Run("trainer without available hours gets an empty list", func(t *testing.T) {
+		t.Parallel()
+
+		trainer := newTrainer(t)
+		attendeeToken := tests.NewSession(common.NewUUIDv7().String())
+		hours := tests.TomorrowHours(t, 1)
+
+		status := trainersclient.Availability
+		dates := getTrainerHoursByUUID(ctx, t, clients, attendeeToken, trainer.UUID,
+			&trainersclient.GetTrainerHoursByUuidParams{From: hours[0], To: hours[0], Status: &status})
+
+		assert.Empty(t, dates)
+	})
+
+	t.Run("empty status returns every hour", func(t *testing.T) {
+		t.Parallel()
+
+		trainer := newTrainer(t)
+		attendeeToken := tests.NewSession(common.NewUUIDv7().String())
+		hours := tests.TomorrowHours(t, 1)
+
+		status := trainersclient.GetTrainerHoursByUuidParamsStatus("")
+		dates := getTrainerHoursByUUID(ctx, t, clients, attendeeToken, trainer.UUID,
+			&trainersclient.GetTrainerHoursByUuidParams{From: hours[0], To: hours[0], Status: &status})
+
+		require.Len(t, dates, 1)
+		cfg := hourFactoryConfig(t)
+		assert.Len(t, dates[0].Hours, cfg.MaxUtcHour-cfg.MinUtcHour+1)
+	})
+
+	t.Run("unknown status is invalid input", func(t *testing.T) {
+		t.Parallel()
+
+		hours := tests.TomorrowHours(t, 1)
+		status := trainersclient.GetTrainerHoursByUuidParamsStatus("foo")
+		resp, err := clients.Trainers.GetTrainerHoursByUuidWithResponse(
+			ctx,
+			newTrainer(t).UUID,
+			&trainersclient.GetTrainerHoursByUuidParams{From: hours[0], To: hours[0], Status: &status},
+			tests.WithAuth(tests.NewSession(common.NewUUIDv7().String())),
+		)
+
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode())
+	})
+
+	t.Run("without token is unauthorized", func(t *testing.T) {
+		t.Parallel()
+
+		hours := tests.TomorrowHours(t, 1)
+		resp, err := clients.Trainers.GetTrainerHoursByUuidWithResponse(
+			ctx,
+			newTrainer(t).UUID,
+			&trainersclient.GetTrainerHoursByUuidParams{From: hours[0], To: hours[0]},
 		)
 
 		require.NoError(t, err)

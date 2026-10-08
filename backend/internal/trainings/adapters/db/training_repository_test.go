@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -41,11 +42,14 @@ func newUsers(t *testing.T) users {
 	}
 }
 
-// newTraining builds a training and deletes its row when the test ends.
+var trainingCount atomic.Int64
+
+// newTraining builds a training at a distinct hour, so trainings of the same users don't collide
+// on the double booking indexes, and deletes its row when the test ends.
 func newTraining(t *testing.T, u users) *domain.Training {
 	t.Helper()
 
-	hour := time.Now().UTC().Truncate(time.Hour).AddDate(0, 0, 3)
+	hour := time.Now().UTC().Truncate(time.Hour).AddDate(0, 0, 3).Add(time.Duration(trainingCount.Add(1)) * time.Hour)
 	training, err := domain.NewTraining(u.attendee, u.trainer, hour, "legs day")
 	require.NoError(t, err)
 

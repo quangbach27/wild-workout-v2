@@ -79,6 +79,9 @@ type Forbidden = Error
 // InvalidInput defines model for InvalidInput.
 type InvalidInput = Error
 
+// NotFound defines model for NotFound.
+type NotFound = Error
+
 // Unauthorized defines model for Unauthorized.
 type Unauthorized = Error
 
@@ -102,6 +105,9 @@ type ServerInterface interface {
 	// ScheduleTraining Schedule a training
 	// (POST /api/v1/trainings)
 	ScheduleTraining(ctx *echo.Context) error
+	// CancelTraining Cancel a training
+	// (POST /api/v1/trainings/{trainingUuid}/cancel)
+	CancelTraining(ctx *echo.Context, trainingUuid string) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -140,6 +146,22 @@ func (w *ServerInterfaceWrapper) ScheduleTraining(ctx *echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.ScheduleTraining(ctx)
+	return err
+}
+
+// CancelTraining converts echo context to params.
+func (w *ServerInterfaceWrapper) CancelTraining(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "trainingUuid" -------------
+	var trainingUuid string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "trainingUuid", ctx.Param("trainingUuid"), &trainingUuid, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter trainingUuid: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CancelTraining(ctx, trainingUuid)
 	return err
 }
 
@@ -192,6 +214,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 
 	router.GET(options.BaseURL+"/api/v1/trainings", wrapper.GetUserTrainings, options.OperationMiddlewares["getUserTrainings"]...)
 	router.POST(options.BaseURL+"/api/v1/trainings", wrapper.ScheduleTraining, options.OperationMiddlewares["scheduleTraining"]...)
+	router.POST(options.BaseURL+"/api/v1/trainings/:trainingUuid/cancel", wrapper.CancelTraining, options.OperationMiddlewares["cancelTraining"]...)
 
 }
 
@@ -200,6 +223,8 @@ type ConflictJSONResponse Error
 type ForbiddenJSONResponse Error
 
 type InvalidInputJSONResponse Error
+
+type NotFoundJSONResponse Error
 
 type UnauthorizedJSONResponse Error
 
@@ -331,6 +356,92 @@ func (response ScheduleTraining409JSONResponse) VisitScheduleTrainingResponse(w 
 	return err
 }
 
+type CancelTrainingRequestObject struct {
+	TrainingUuid string `json:"trainingUuid"`
+}
+
+type CancelTrainingResponseObject interface {
+	VisitCancelTrainingResponse(w http.ResponseWriter) error
+}
+
+type CancelTraining204Response struct {
+}
+
+func (response CancelTraining204Response) VisitCancelTrainingResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type CancelTraining400JSONResponse struct{ InvalidInputJSONResponse }
+
+func (response CancelTraining400JSONResponse) VisitCancelTrainingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CancelTraining401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CancelTraining401JSONResponse) VisitCancelTrainingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CancelTraining403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response CancelTraining403JSONResponse) VisitCancelTrainingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CancelTraining404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response CancelTraining404JSONResponse) VisitCancelTrainingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CancelTraining409JSONResponse struct{ ConflictJSONResponse }
+
+func (response CancelTraining409JSONResponse) VisitCancelTrainingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// GetUserTrainings Get the user's upcoming trainings
@@ -339,6 +450,9 @@ type StrictServerInterface interface {
 	// ScheduleTraining Schedule a training
 	// (POST /api/v1/trainings)
 	ScheduleTraining(ctx context.Context, request ScheduleTrainingRequestObject) (ScheduleTrainingResponseObject, error)
+	// CancelTraining Cancel a training
+	// (POST /api/v1/trainings/{trainingUuid}/cancel)
+	CancelTraining(ctx context.Context, request CancelTrainingRequestObject) (CancelTrainingResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx *echo.Context, request any) (any, error)
@@ -411,6 +525,31 @@ func (sh *strictHandler) ScheduleTraining(ctx *echo.Context) error {
 		return err
 	} else if validResponse, ok := response.(ScheduleTrainingResponseObject); ok {
 		return validResponse.VisitScheduleTrainingResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// CancelTraining operation middleware
+func (sh *strictHandler) CancelTraining(ctx *echo.Context, trainingUuid string) error {
+	var request CancelTrainingRequestObject
+
+	request.TrainingUuid = trainingUuid
+
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.CancelTraining(ctx.Request().Context(), request.(CancelTrainingRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CancelTraining")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(CancelTrainingResponseObject); ok {
+		return validResponse.VisitCancelTrainingResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}

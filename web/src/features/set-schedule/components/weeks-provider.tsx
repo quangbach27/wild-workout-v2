@@ -10,7 +10,7 @@ import {
 
 import { getRouteApi } from '@tanstack/react-router';
 
-import { buildWeeks, type Week } from '@/lib/weeks';
+import { buildWeeks, type Week } from '@/features/set-schedule/lib/weeks';
 import { SET_SCHEDULE_URL } from '@/routes/_app/set-schedule';
 
 const route = getRouteApi(SET_SCHEDULE_URL);
@@ -30,7 +30,7 @@ const WeeksStateContext = createContext<WeeksState | null>(null);
 const WeeksActionsContext = createContext<WeeksActions | null>(null);
 
 export function WeeksProvider(props: { children: React.ReactNode }) {
-  const weeks = useMemo(() => buildWeeks({}), []);
+  const weeks = useMemo(() => buildWeeks(), []);
   const navigate = route.useNavigate();
 
   // The URL is only read on the initial load, to pick the first selected week.

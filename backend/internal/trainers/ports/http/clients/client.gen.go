@@ -19,6 +19,27 @@ import (
 	"github.com/oapi-codegen/runtime"
 )
 
+// Defines values for GetTrainerHoursByUuidParamsStatus.
+const (
+	Availability      GetTrainerHoursByUuidParamsStatus = "availability"
+	NotAvailability   GetTrainerHoursByUuidParamsStatus = "not-availability"
+	TrainingScheduled GetTrainerHoursByUuidParamsStatus = "training-scheduled"
+)
+
+// Valid indicates whether the value is a known member of the GetTrainerHoursByUuidParamsStatus enum.
+func (e GetTrainerHoursByUuidParamsStatus) Valid() bool {
+	switch e {
+	case Availability:
+		return true
+	case NotAvailability:
+		return true
+	case TrainingScheduled:
+		return true
+	default:
+		return false
+	}
+}
+
 // Date defines model for Date.
 type Date struct {
 	Date         time.Time `json:"date"`
@@ -72,6 +93,16 @@ type GetTrainerHoursParams struct {
 	From time.Time `form:"from" json:"from"`
 	To   time.Time `form:"to" json:"to"`
 }
+
+// GetTrainerHoursByUuidParams defines parameters for GetTrainerHoursByUuid.
+type GetTrainerHoursByUuidParams struct {
+	From   time.Time                          `form:"from" json:"from"`
+	To     time.Time                          `form:"to" json:"to"`
+	Status *GetTrainerHoursByUuidParamsStatus `form:"status,omitempty" json:"status,omitempty"`
+}
+
+// GetTrainerHoursByUuidParamsStatus defines parameters for GetTrainerHoursByUuid.
+type GetTrainerHoursByUuidParamsStatus string
 
 // MakeHoursAvailableJSONRequestBody defines body for MakeHoursAvailable for application/json ContentType.
 type MakeHoursAvailableJSONRequestBody = HoursRequest
@@ -187,6 +218,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with PUT /api/v1/trainer/hours/not-available (the `MakeHoursNotAvailable` operationId).
 	MakeHoursNotAvailable(ctx context.Context, body MakeHoursNotAvailableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTrainerHoursByUuid Get a trainer's hours in a date range
+	//
+	// Same as `getTrainerHours`, but for the trainer in the path. When `status` is set, only the hours with that status are returned and days left without hours are omitted.
+	//
+	// Corresponds with GET /api/v1/trainers/{trainerUuid}/hours (the `GetTrainerHoursByUuid` operationId).
+	GetTrainerHoursByUuid(ctx context.Context, trainerUuid string, params *GetTrainerHoursByUuidParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 // GetTrainerHours Get the trainer's hours in a date range
@@ -264,6 +302,23 @@ func (c *Client) MakeHoursNotAvailableWithBody(ctx context.Context, contentType 
 // Corresponds with PUT /api/v1/trainer/hours/not-available (the `MakeHoursNotAvailable` operationId).
 func (c *Client) MakeHoursNotAvailable(ctx context.Context, body MakeHoursNotAvailableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewMakeHoursNotAvailableRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetTrainerHoursByUuid Get a trainer's hours in a date range
+//
+// Same as `getTrainerHours`, but for the trainer in the path. When `status` is set, only the hours with that status are returned and days left without hours are omitted.
+//
+// Corresponds with GET /api/v1/trainers/{trainerUuid}/hours (the `GetTrainerHoursByUuid` operationId).
+func (c *Client) GetTrainerHoursByUuid(ctx context.Context, trainerUuid string, params *GetTrainerHoursByUuidParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTrainerHoursByUuidRequest(c.Server, trainerUuid, params)
 	if err != nil {
 		return nil, err
 	}
@@ -412,6 +467,83 @@ func NewMakeHoursNotAvailableRequestWithBody(server string, contentType string, 
 	return req, nil
 }
 
+// NewGetTrainerHoursByUuidRequest constructs an http.Request for the GetTrainerHoursByUuid method
+func NewGetTrainerHoursByUuidRequest(server string, trainerUuid string, params *GetTrainerHoursByUuidParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "trainerUuid", trainerUuid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/trainers/%s/hours", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "from", params.From, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "to", params.To, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if params.Status != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "status", *params.Status, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -492,6 +624,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PUT /api/v1/trainer/hours/not-available (the `MakeHoursNotAvailable` operationId).
 	MakeHoursNotAvailableWithResponse(ctx context.Context, body MakeHoursNotAvailableJSONRequestBody, reqEditors ...RequestEditorFn) (*MakeHoursNotAvailableClientResponse, error)
+
+	// GetTrainerHoursByUuidWithResponse Get a trainer's hours in a date range
+	//
+	// Same as `getTrainerHours`, but for the trainer in the path. When `status` is set, only the hours with that status are returned and days left without hours are omitted.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api/v1/trainers/{trainerUuid}/hours (the `GetTrainerHoursByUuid` operationId).
+	GetTrainerHoursByUuidWithResponse(ctx context.Context, trainerUuid string, params *GetTrainerHoursByUuidParams, reqEditors ...RequestEditorFn) (*GetTrainerHoursByUuidClientResponse, error)
 }
 
 type GetTrainerHoursClientResponse struct {
@@ -659,6 +800,61 @@ func (r MakeHoursNotAvailableClientResponse) ContentType() string {
 	return ""
 }
 
+type GetTrainerHoursByUuidClientResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]Date
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *InvalidInput
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetTrainerHoursByUuidClientResponse) GetJSON200() *[]Date {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetTrainerHoursByUuidClientResponse) GetJSON400() *InvalidInput {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetTrainerHoursByUuidClientResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetBody returns the raw response body bytes
+func (r GetTrainerHoursByUuidClientResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTrainerHoursByUuidClientResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTrainerHoursByUuidClientResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetTrainerHoursByUuidClientResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // GetTrainerHoursWithResponse Get the trainer's hours in a date range
 //
 // Returns every day from `from` to `to` (both inclusive, in UTC), each with all the hours between the minimum and maximum UTC hour. Hours that are not stored are returned as not available.
@@ -724,6 +920,21 @@ func (c *ClientWithResponses) MakeHoursNotAvailableWithResponse(ctx context.Cont
 		return nil, err
 	}
 	return ParseMakeHoursNotAvailableClientResponse(rsp)
+}
+
+// GetTrainerHoursByUuidWithResponse Get a trainer's hours in a date range
+//
+// Same as `getTrainerHours`, but for the trainer in the path. When `status` is set, only the hours with that status are returned and days left without hours are omitted.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api/v1/trainers/{trainerUuid}/hours (the `GetTrainerHoursByUuid` operationId).
+func (c *ClientWithResponses) GetTrainerHoursByUuidWithResponse(ctx context.Context, trainerUuid string, params *GetTrainerHoursByUuidParams, reqEditors ...RequestEditorFn) (*GetTrainerHoursByUuidClientResponse, error) {
+	rsp, err := c.GetTrainerHoursByUuid(ctx, trainerUuid, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTrainerHoursByUuidClientResponse(rsp)
 }
 
 // ParseGetTrainerHoursClientResponse parses an HTTP response from a GetTrainerHoursWithResponse call
@@ -846,6 +1057,46 @@ func ParseMakeHoursNotAvailableClientResponse(rsp *http.Response) (*MakeHoursNot
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTrainerHoursByUuidClientResponse parses an HTTP response from a GetTrainerHoursByUuidWithResponse call
+func ParseGetTrainerHoursByUuidClientResponse(rsp *http.Response) (*GetTrainerHoursByUuidClientResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTrainerHoursByUuidClientResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []Date
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidInput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
 
 	}
 

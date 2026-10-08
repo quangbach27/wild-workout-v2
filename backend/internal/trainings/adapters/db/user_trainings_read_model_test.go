@@ -147,10 +147,11 @@ func TestUserTrainingsReadModel_GetUpcomingTrainings_Pagination(t *testing.T) {
 	u := newUsers(t)
 	hour := time.Now().UTC().Truncate(time.Hour).AddDate(0, 0, 1)
 
-	// two trainings share the same hour, so the page boundary has to break the tie by id
+	// two trainings share the same hour (the second is canceled, because an active user can't be
+	// booked twice), so the page boundary has to break the tie by id
 	expected := []*domain.Training{
 		addTrainingAt(t, repo, u.attendee, u.trainer, hour, false, nil),
-		addTrainingAt(t, repo, u.attendee, u.trainer, hour, false, nil),
+		addTrainingAt(t, repo, u.attendee, u.trainer, hour, true, nil),
 		addTrainingAt(t, repo, u.attendee, u.trainer, hour.Add(time.Hour), false, nil),
 		addTrainingAt(t, repo, u.attendee, u.trainer, hour.Add(2*time.Hour), false, nil),
 		addTrainingAt(t, repo, u.attendee, u.trainer, hour.Add(3*time.Hour), false, nil),

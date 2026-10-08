@@ -28,6 +28,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    '/api/v1/trainings/{trainingUuid}/cancel': {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel a training
+         * @description The trainer or the attendee (taken from the session) cancels the training and the trainer's hour becomes available again. The attendee gets the credit back when the training is canceled at least 24 hours before the hour.
+         */
+        post: operations['cancelTraining'];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -96,7 +116,7 @@ export interface components {
                 'application/json': components['schemas']['Error'];
             };
         };
-        /** @description Only attendees can schedule a training */
+        /** @description The user is not allowed to do this, e.g. only attendees can schedule a training */
         Forbidden: {
             headers: {
                 [name: string]: unknown;
@@ -105,7 +125,16 @@ export interface components {
                 'application/json': components['schemas']['Error'];
             };
         };
-        /** @description The trainer's hour is not available */
+        /** @description The training does not exist */
+        NotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                'application/json': components['schemas']['Error'];
+            };
+        };
+        /** @description The request conflicts with the current state, e.g. the trainer's hour is not available or the training is already canceled */
         Conflict: {
             headers: {
                 [name: string]: unknown;
@@ -174,6 +203,31 @@ export interface operations {
             400: components['responses']['InvalidInput'];
             401: components['responses']['Unauthorized'];
             403: components['responses']['Forbidden'];
+            409: components['responses']['Conflict'];
+        };
+    };
+    cancelTraining: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trainingUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Training canceled */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components['responses']['InvalidInput'];
+            401: components['responses']['Unauthorized'];
+            403: components['responses']['Forbidden'];
+            404: components['responses']['NotFound'];
             409: components['responses']['Conflict'];
         };
     };

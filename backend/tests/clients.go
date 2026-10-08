@@ -14,12 +14,14 @@ import (
 
 	trainersclient "backend/internal/trainers/ports/http/clients"
 	trainingsclient "backend/internal/trainings/ports/http/clients"
+	usersclient "backend/internal/users/ports/http/clients"
 )
 
 // TestClients holds the API client of every module.
 type TestClients struct {
 	Trainers  *trainersclient.ClientWithResponses
 	Trainings *trainingsclient.ClientWithResponses
+	Users     *usersclient.ClientWithResponses
 }
 
 func NewTestClients(t *testing.T) TestClients {
@@ -53,8 +55,16 @@ func NewTestClients(t *testing.T) TestClients {
 	)
 	require.NoError(t, err)
 
+	users, err := usersclient.NewClientWithResponses(
+		BaseURL,
+		usersclient.WithHTTPClient(httpClient),
+		usersclient.WithRequestEditorFn(editorFn),
+	)
+	require.NoError(t, err)
+
 	return TestClients{
 		Trainers:  trainers,
 		Trainings: trainings,
+		Users:     users,
 	}
 }

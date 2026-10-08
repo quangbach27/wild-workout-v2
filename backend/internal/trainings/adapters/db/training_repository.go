@@ -44,7 +44,7 @@ func (r *trainingRepo) GetTraining(
 ) (*domain.Training, error) {
 	model, err := dbmodels.New(r.db).GetTraining(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieiving training from database: %w", err)
+		return nil, trainingQueryError(err)
 	}
 
 	return toVisibleTraining(model, user)
@@ -61,7 +61,7 @@ func (r *trainingRepo) UpdateTraining(
 
 		model, err := queries.GetTraining(ctx, id)
 		if err != nil {
-			return fmt.Errorf("error retrieiving training from database: %w", err)
+			return trainingQueryError(err)
 		}
 
 		training, err := toVisibleTraining(model, user)
@@ -79,6 +79,15 @@ func (r *trainingRepo) UpdateTraining(
 
 		return nil
 	})
+}
+
+// trainingQueryError maps a missing row to a 404 common.Error.
+func trainingQueryError(err error) error {
+	if errors.Is(err, pgx.ErrNoRows) {
+		return common.NewNotFoundError("training-not-found", "training not found").WithInternalError(err)
+	}
+
+	return fmt.Errorf("error retrieiving training from database: %w", err)
 }
 
 // toVisibleTraining maps the model to the domain and returns a 403 common.Error when the user

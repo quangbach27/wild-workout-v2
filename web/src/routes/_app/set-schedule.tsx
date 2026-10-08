@@ -21,7 +21,7 @@ function SetSchedulePage() {
   return (
     <WeeksProvider>
       <ContentLayout
-        label="Set your availability"
+        title="Set your availability"
         description="Tap an hour to open or close it -- changes save instantly"
         additionalContent={<WeeksPicker />}
       >

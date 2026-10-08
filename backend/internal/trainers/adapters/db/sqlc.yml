@@ -27,6 +27,13 @@ sql:
 
           # hours
           - db_type: "trainers.hour_status"
+            nullable: true
+            go_type:
+              import: "backend/internal/trainers/domain"
+              type: "HourStatus"
+              pointer: true
+
+          - db_type: "trainers.hour_status"
             go_type:
               import: "backend/internal/trainers/domain"
               type: "HourStatus"

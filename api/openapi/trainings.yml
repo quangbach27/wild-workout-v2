@@ -69,6 +69,33 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "409":
           $ref: "#/components/responses/Conflict"
+  /api/v1/trainings/{trainingUuid}/cancel:
+    post:
+      operationId: cancelTraining
+      summary: Cancel a training
+      description: >
+        The trainer or the attendee (taken from the session) cancels the training and the trainer's
+        hour becomes available again. The attendee gets the credit back when the training is canceled
+        at least 24 hours before the hour.
+      parameters:
+        - name: trainingUuid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Training canceled
+        "400":
+          $ref: "#/components/responses/InvalidInput"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 components:
   securitySchemes:
     bearerAuth:
@@ -88,13 +115,19 @@ components:
           schema:
             $ref: "#/components/schemas/Error"
     Forbidden:
-      description: Only attendees can schedule a training
+      description: The user is not allowed to do this, e.g. only attendees can schedule a training
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: The training does not exist
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
     Conflict:
-      description: The trainer's hour is not available
+      description: The request conflicts with the current state, e.g. the trainer's hour is not available or the training is already canceled
       content:
         application/json:
           schema:

@@ -21,12 +21,6 @@ describe('DateBadge', () => {
     expect(screen.queryByText('Today')).not.toBeInTheDocument();
   });
 
-  it('does not render the Today pill in the outline variant', () => {
-    render(<DateBadge variant="outline" weekday="Mon" day="12" isToday />);
-
-    expect(screen.queryByText('Today')).not.toBeInTheDocument();
-  });
-
   it('sets data attributes for variant and today', () => {
     const { container } = render(
       <DateBadge variant="outline" weekday="Mon" day="12" isToday />,

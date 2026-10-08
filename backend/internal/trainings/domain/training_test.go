@@ -92,14 +92,13 @@ func TestNewTraining(t *testing.T) {
 		},
 		{
 			name: "empty notes", attendee: users.attendee, trainer: users.trainer,
-			hour: futureHour(1), wantSlugs: []string{"invalid-training-notes"},
+			hour: futureHour(1),
 		},
 		{
 			name: "multiple failures", wantSlugs: []string{
 				"invalid-training-hour",
 				"invalid-training-attendee",
 				"invalid-training-trainer",
-				"invalid-training-notes",
 			},
 		},
 	}

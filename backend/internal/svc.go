@@ -3,8 +3,6 @@ package internal
 import (
 	"context"
 	"fmt"
-	"log/slog"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	commonHttp "github.com/quangbach27/golang-common/http"
@@ -49,23 +47,21 @@ func New(
 
 	moduleContracts := &contracts.Contracts{}
 	modules := []modules.Module{
-		users.NewModule(moduleContracts),
+		users.NewModule(config, pgxDb, moduleContracts),
 		trainers.NewModule(config, pgxDb, moduleContracts),
 		trainings.NewModule(config, pgxDb, moduleContracts),
 	}
 
-	if err = initAndRegisterModuleContracts(ctx, modules, moduleContracts); err != nil {
+	if err = initModules(ctx, modules); err != nil {
 		return Svc{}, err
 	}
 
-	for _, module := range modules {
-		if err := module.RegisterHttp(
-			ctx,
-			echoServer.GlobalRouter(),
-			echoServer.ProtectedRouter(),
-		); err != nil {
-			return Svc{}, fmt.Errorf("error register http in %s module: %w", module.Name(), err)
-		}
+	if err = registerModuleContracts(ctx, modules, moduleContracts); err != nil {
+		return Svc{}, err
+	}
+
+	if err = registerModuleHttp(ctx, modules, echoServer); err != nil {
+		return Svc{}, err
 	}
 
 	return Svc{
@@ -96,27 +92,44 @@ func (s Svc) Run(ctx context.Context) error {
 	return g.Wait()
 }
 
-func initAndRegisterModuleContracts(
+func initModules(ctx context.Context, modules []modules.Module) error {
+	for _, module := range modules {
+		if err := module.Init(ctx); err != nil {
+			return fmt.Errorf("error init %s module: %w", module.Name(), err)
+		}
+	}
+
+	return nil
+}
+
+func registerModuleContracts(
 	ctx context.Context,
 	modules []modules.Module,
 	moduleContracts *contracts.Contracts,
 ) error {
 	for _, module := range modules {
-		start := time.Now()
-
-		if err := module.Init(ctx); err != nil {
-			return fmt.Errorf("error init %s module: %w", module.Name(), err)
-		}
-
 		if err := module.RegisterContracts(ctx, moduleContracts); err != nil {
 			return fmt.Errorf("error register contract for %s module: %w", module.Name(), err)
 		}
-
-		slog.With(
-			"duration", time.Since(start),
-			"module", module.Name(),
-		).Debug("Initialized module")
 	}
 
 	return moduleContracts.Verify()
+}
+
+func registerModuleHttp(
+	ctx context.Context,
+	modules []modules.Module,
+	echoServer *commonHttp.EchoServer,
+) error {
+	for _, module := range modules {
+		if err := module.RegisterHttp(
+			ctx,
+			echoServer.GlobalRouter(),
+			echoServer.ProtectedRouter(),
+		); err != nil {
+			return fmt.Errorf("error register http in %s module: %w", module.Name(), err)
+		}
+	}
+
+	return nil
 }

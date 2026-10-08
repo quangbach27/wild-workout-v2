@@ -15,6 +15,7 @@ import (
 	"backend/internal/trainers/domain"
 	trainersclient "backend/internal/trainers/ports/http/clients"
 	trainingsclient "backend/internal/trainings/ports/http/clients"
+	usersclient "backend/internal/users/ports/http/clients"
 	"backend/tests"
 )
 
@@ -75,4 +76,27 @@ func scheduleTraining(
 	require.NoError(t, err)
 
 	return resp
+}
+
+// newOnboardedAttendee creates an onboarded attendee with credits, as scheduling debits one.
+func newOnboardedAttendee(ctx context.Context, t *testing.T, clients tests.TestClients) testUser {
+	t.Helper()
+
+	attendee := newUser(shared.RoleAttendee)
+
+	onboard, err := clients.Users.OnboardUserWithResponse(
+		ctx,
+		usersclient.OnboardUserJSONRequestBody{DisplayName: tests.Username(attendee.UUID)},
+		tests.WithAuth(attendee.Token),
+	)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusNoContent, onboard.StatusCode(), string(onboard.Body))
+
+	topUp, err := clients.Users.TopUpBalanceWithResponse(
+		ctx, usersclient.TopUpBalanceJSONRequestBody{Amount: 5}, tests.WithAuth(attendee.Token),
+	)
+	require.NoError(t, err)
+	require.Less(t, topUp.StatusCode(), http.StatusMultipleChoices, string(topUp.Body))
+
+	return attendee
 }

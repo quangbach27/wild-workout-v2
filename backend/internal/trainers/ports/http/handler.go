@@ -10,6 +10,7 @@ import (
 
 	"backend/internal/trainers/app/commands"
 	"backend/internal/trainers/app/queries"
+	"backend/internal/trainers/domain"
 )
 
 type Handler struct {
@@ -69,6 +70,28 @@ func (h *Handler) GetTrainerHours(
 	return GetTrainerHours200JSONResponse(datesToResponse(dates)), nil
 }
 
+func (h *Handler) GetTrainerHoursByUuid(
+	ctx context.Context,
+	request GetTrainerHoursByUuidRequestObject,
+) (GetTrainerHoursByUuidResponseObject, error) {
+	status, err := toDomainHourStatus(request.Params.Status)
+	if err != nil {
+		return nil, err
+	}
+
+	dates, err := h.queries.GetTrainerHours(ctx, queries.GetTrainerHoursQuery{
+		TrainerUUID: request.TrainerUuid,
+		DateFrom:    request.Params.From,
+		DateTo:      request.Params.To,
+		Status:      status,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return GetTrainerHoursByUuid200JSONResponse(datesToResponse(dates)), nil
+}
+
 func (h *Handler) MakeHoursAvailable(
 	ctx context.Context,
 	request MakeHoursAvailableRequestObject,
@@ -115,6 +138,25 @@ func trainerUUIDFromContext(ctx context.Context) (string, error) {
 	}
 
 	return session.UserID, nil
+}
+
+func toDomainHourStatus(status *GetTrainerHoursByUuidParamsStatus) (*domain.HourStatus, error) {
+	if status == nil || *status == "" {
+		return nil, nil
+	}
+
+	// MustEnum panics on an unknown value, so reject it first
+	if !status.Valid() {
+		return nil, common.NewInvalidInputError(
+			"invalid-hour-status",
+			"unknown hour status %q",
+			*status,
+		)
+	}
+
+	hourStatus := common.MustEnum[domain.HourStatus](string(*status))
+
+	return &hourStatus, nil
 }
 
 func datesToResponse(dates []queries.Date) []Date {

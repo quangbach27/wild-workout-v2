@@ -2,12 +2,14 @@ package commands
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
 	"backend/internal/shared"
 	trainersClient "backend/internal/trainers/ports/module/client"
 	"backend/internal/trainings/domain"
+	"backend/internal/users/ports/module/client"
 )
 
 type ScheduleTrainingCmd struct {
@@ -57,6 +59,13 @@ func (h *Handler) ScheduleTraining(ctx context.Context, cmd ScheduleTrainingCmd)
 		}
 
 		return domain.TrainingUUID{}, err
+	}
+
+	if _, err := h.modules.UpdateBalance(ctx, client.UpdateBalanceRequest{
+		UserUUID:     cmd.AttendeeUUID,
+		AmountChange: -1,
+	}); err != nil {
+		return domain.TrainingUUID{}, fmt.Errorf("failed to update balance: %w", err)
 	}
 
 	return training.ID(), nil

@@ -81,6 +81,29 @@ func getTrainerHours(
 	return *resp.JSON200
 }
 
+func getTrainerHoursByUUID(
+	ctx context.Context,
+	t *testing.T,
+	clients tests.TestClients,
+	viewerToken string,
+	trainerUUID string,
+	params *trainersclient.GetTrainerHoursByUuidParams,
+) []trainersclient.Date {
+	t.Helper()
+
+	resp, err := clients.Trainers.GetTrainerHoursByUuidWithResponse(
+		ctx,
+		trainerUUID,
+		params,
+		tests.WithAuth(viewerToken),
+	)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
+	require.NotNil(t, resp.JSON200)
+
+	return *resp.JSON200
+}
+
 func makeHoursBody(hours []time.Time) trainersclient.HoursRequest {
 	return trainersclient.HoursRequest{Hours: hours}
 }

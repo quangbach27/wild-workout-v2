@@ -1,7 +1,7 @@
 import type React from 'react';
 
 export default function ContentLayout(props: {
-  label: string;
+  title: string;
   description: string;
   additionalContent?: React.ReactNode;
   children: React.ReactNode;
@@ -11,7 +11,7 @@ export default function ContentLayout(props: {
       <div className="flex shrink-0 flex-col gap-2 pb-3 md:flex-row md:items-end md:justify-between md:pb-5">
         <div>
           <h1 className="text-2xl font-bold uppercase md:text-4xl">
-            {props.label}
+            {props.title}
           </h1>
           <span className="text-muted-foreground">{props.description}</span>
         </div>

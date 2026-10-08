@@ -54,14 +54,13 @@ export default function DateBadge({
       className={cn('group', dateBadgeVariants({ variant, size }), className)}
       {...props}
     >
-      {/* Reserve the pill's height only in the grid header so columns stay aligned */}
-      <div className="flex h-5 items-center justify-center">
-        {isToday && (
+      {isToday && (
+        <div className="flex h-5 items-center justify-center">
           <span className="bg-primary rounded-full px-2 text-xs font-semibold text-white">
             Today
           </span>
-        )}
-      </div>
+        </div>
+      )}
       <div className={labelClass}>{weekday}</div>
       <div
         className={cn(
