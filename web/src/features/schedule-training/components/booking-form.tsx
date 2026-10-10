@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 
 import { cn } from 'cn';
 
-import ErrorBoundaryFallback from '@/components/query-boundary';
+import { ErrorBoundary } from '@/components/error-boundary';
 import { Card, CardContent } from '@/components/ui/card';
 import { FieldLegend, FieldSet } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -32,21 +32,21 @@ export default function BookingForm(props: { className?: string }) {
           <FieldLegend className={legendClass}>
             1 · Choose a trainer
           </FieldLegend>
-          <ErrorBoundaryFallback>
+          <ErrorBoundary>
             <Suspense fallback={<Skeleton className="h-10 w-full sm:w-72" />}>
               <TrainerSelect />
             </Suspense>
-          </ErrorBoundaryFallback>
+          </ErrorBoundary>
         </FieldSet>
 
         {trainerUuid ? (
           <FieldSet>
             <FieldLegend className={legendClass}>2 · Pick a day</FieldLegend>
-            <ErrorBoundaryFallback>
+            <ErrorBoundary>
               <Suspense fallback={<Skeleton className="h-20 w-full" />}>
                 <TrainerDaySelect trainerUuid={trainerUuid} />
               </Suspense>
-            </ErrorBoundaryFallback>
+            </ErrorBoundary>
           </FieldSet>
         ) : (
           <p className="text-muted-foreground text-sm">
@@ -57,11 +57,11 @@ export default function BookingForm(props: { className?: string }) {
         {trainerUuid ? (
           <FieldSet>
             <FieldLegend className={legendClass}>3 · Pick a time</FieldLegend>
-            <ErrorBoundaryFallback>
+            <ErrorBoundary>
               <Suspense fallback={<Skeleton className="h-24 w-full" />}>
                 <TrainerHourSelect trainerUuid={trainerUuid} />
               </Suspense>
-            </ErrorBoundaryFallback>
+            </ErrorBoundary>
           </FieldSet>
         ) : (
           <p className="text-muted-foreground text-sm">Pick a day first.</p>
