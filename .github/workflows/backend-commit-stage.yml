@@ -57,11 +57,19 @@ jobs:
           cache: true
           cache-dependency-path: backend/go.sum
 
+      - name: Check go.mod / go.sum are tidy
+        run: |
+          make tidy
+          git diff --exit-code go.mod go.sum
+        working-directory: backend
+
       - name: Lint
-        run: make -C backend lint
+        run: make lint
+        working-directory: backend
 
       - name: Test
-        run: make -C backend test-unit
+        run: make test-unit
+        working-directory: backend
 
       - name: Build
         run: go build -v ./...
