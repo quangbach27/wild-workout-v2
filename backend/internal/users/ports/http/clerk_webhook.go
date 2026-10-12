@@ -4,20 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"slices"
 	"strings"
 
+	"backend/internal/shared"
+	"backend/internal/users/app"
+
 	"github.com/labstack/echo/v5"
 	common "github.com/quangbach27/golang-common"
 	commonHttp "github.com/quangbach27/golang-common/http"
-	svix "github.com/svix/svix-webhooks/go"
-
-	"backend/internal/shared"
-	"backend/internal/users/app"
 )
 
 // ClerkWebhookPath is where Clerk delivers its events. The route is public: it is authenticated by
@@ -32,29 +30,35 @@ type RoleMirror interface {
 	MirrorRole(ctx context.Context, userID string, role shared.Role) error
 }
 
-type ClerkWebhook struct {
-	service    *app.Service
-	verifier   *svix.Webhook
-	roleMirror RoleMirror
+type WebhookVerifier interface {
+	Verify(payload []byte, headers http.Header) error
+}
+
+type WebhookHandler struct {
+	service  *app.Service
+	verifier WebhookVerifier
+}
+
+func RegisterWebhook(globalRouter commonHttp.EchoRouter, webhookHandler *WebhookHandler) error {
+	globalRouter.POST(ClerkWebhookPath, webhookHandler.handle)
+	return nil
 }
 
 // NewClerkWebhook returns the handler for Clerk webhooks. signingSecret is the whsec_... secret of
 // the endpoint. roleMirror may be nil to skip mirroring the role to Clerk.
-func NewClerkWebhook(service *app.Service, signingSecret string, roleMirror RoleMirror) (*ClerkWebhook, error) {
+func NewClerkWebhook(service *app.Service, webhookVerifier WebhookVerifier) (*WebhookHandler, error) {
 	if service == nil {
 		return nil, errors.New("service can't be nil")
 	}
 
-	verifier, err := svix.NewWebhook(signingSecret)
-	if err != nil {
-		return nil, fmt.Errorf("invalid clerk webhook signing secret: %w", err)
+	if webhookVerifier == nil {
+		return nil, errors.New("webhookVerifier can't be nil")
 	}
 
-	return &ClerkWebhook{service: service, verifier: verifier, roleMirror: roleMirror}, nil
-}
-
-func (w *ClerkWebhook) Register(router commonHttp.EchoRouter) {
-	router.POST(ClerkWebhookPath, w.handle)
+	return &WebhookHandler{
+		service:  service,
+		verifier: webhookVerifier,
+	}, nil
 }
 
 type clerkEvent struct {
@@ -93,7 +97,7 @@ func (d clerkUserData) role() shared.Role {
 	return shared.RoleAttendee
 }
 
-func (w *ClerkWebhook) handle(c *echo.Context) error {
+func (w *WebhookHandler) handle(c *echo.Context) error {
 	body, err := io.ReadAll(http.MaxBytesReader(c.Response(), c.Request().Body, maxWebhookBodyBytes))
 	if err != nil {
 		return common.NewInvalidInputError("invalid-webhook-body", "can't read the request body")
@@ -130,7 +134,7 @@ func (w *ClerkWebhook) handle(c *echo.Context) error {
 }
 
 // userCreated is idempotent: Clerk delivers at least once.
-func (w *ClerkWebhook) userCreated(ctx context.Context, data clerkUserData) error {
+func (w *WebhookHandler) userCreated(ctx context.Context, data clerkUserData) error {
 	role := data.role()
 
 	if _, err := w.service.EnsureUser(ctx, app.OnboardUserCmd{
@@ -141,16 +145,12 @@ func (w *ClerkWebhook) userCreated(ctx context.Context, data clerkUserData) erro
 		return err
 	}
 
-	if w.roleMirror == nil || len(data.PublicMetadata.Roles) != 0 {
-		return nil
-	}
-
-	return w.roleMirror.MirrorRole(ctx, data.ID, role)
+	return nil
 }
 
 // userUpdated keeps the display name in sync. Events can arrive before user.created or for users
 // created before the webhook existed, so an unknown user is created instead.
-func (w *ClerkWebhook) userUpdated(ctx context.Context, data clerkUserData) error {
+func (w *WebhookHandler) userUpdated(ctx context.Context, data clerkUserData) error {
 	err := w.service.RenameUser(ctx, data.ID, data.displayName())
 
 	var commonErr common.Error

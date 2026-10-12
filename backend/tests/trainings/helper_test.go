@@ -78,6 +78,24 @@ func scheduleTraining(
 	return resp
 }
 
+// newOnboardedTrainer creates a trainer that exists in the users module, as scheduling and
+// canceling look up the names of both users.
+func newOnboardedTrainer(ctx context.Context, t *testing.T, clients tests.TestClients) testUser {
+	t.Helper()
+
+	trainer := newUser(shared.RoleTrainer)
+
+	onboard, err := clients.Users.OnboardUserWithResponse(
+		ctx,
+		usersclient.OnboardUserJSONRequestBody{DisplayName: tests.Username(trainer.UUID)},
+		tests.WithAuth(trainer.Token),
+	)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusNoContent, onboard.StatusCode(), string(onboard.Body))
+
+	return trainer
+}
+
 // newOnboardedAttendee creates an onboarded attendee with credits, as scheduling debits one.
 func newOnboardedAttendee(ctx context.Context, t *testing.T, clients tests.TestClients) testUser {
 	t.Helper()

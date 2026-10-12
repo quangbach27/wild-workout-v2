@@ -22,13 +22,24 @@ type DBConfig struct {
 	Port     string
 }
 
+type ClerkConfig struct {
+	// ClerkSecretKey verifies session tokens and calls Clerk's Backend API. Empty means Clerk is
+	// disabled (dev mock tokens only).
+	ClerkSecretKey string
+	// AuthorizedParties are the web origins allowed in the token's azp claim. Empty skips the check.
+	AuthorizedParties []string
+	// WebhookSigningSecret (whsec_...) verifies the Svix signature of Clerk webhooks.
+	WebhookSigningSecret string
+}
+
 func (db *DBConfig) Dsn() string {
 	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", db.Username, db.Password, db.Host, db.Port, db.Name)
 }
 
 type Config struct {
-	App *AppConfig
-	DB  *DBConfig
+	App   *AppConfig
+	DB    *DBConfig
+	Clerk *ClerkConfig
 }
 
 func NewConfig() *Config {
@@ -46,6 +57,11 @@ func NewConfig() *Config {
 			Host:     getEnv("DB_HOST", "localhost"),
 			Name:     getEnv("DB_NAME", "sumni-finance"),
 			Port:     getEnv("DB_PORT", "5432"),
+		},
+		Clerk: &ClerkConfig{
+			ClerkSecretKey:       getEnv("CLERK_SECRET_KEY", ""),
+			AuthorizedParties:    parseOrigins(getEnv("CLERK_AUTHORIZED_PARTIES", "http://localhost:3000")),
+			WebhookSigningSecret: getEnv("CLERK_WEBHOOK_SIGNING_SECRET", ""),
 		},
 	}
 }

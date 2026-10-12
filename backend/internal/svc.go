@@ -4,17 +4,18 @@ import (
 	"context"
 	"fmt"
 
+	"backend/internal/configs"
+	"backend/internal/configs/auth"
+	"backend/internal/configs/modules"
+	"backend/internal/configs/modules/contracts"
+	"backend/internal/trainers"
+	"backend/internal/trainings"
+	"backend/internal/users"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	commonHttp "github.com/quangbach27/golang-common/http"
 	commonAuth "github.com/quangbach27/golang-common/http/auth"
 	"golang.org/x/sync/errgroup"
-
-	"backend/internal/configs"
-	"backend/internal/modules"
-	"backend/internal/modules/contracts"
-	"backend/internal/trainers"
-	"backend/internal/trainings"
-	"backend/internal/users"
 )
 
 type ExternalServices struct {
@@ -46,10 +47,11 @@ func New(
 	}
 
 	moduleContracts := &contracts.Contracts{}
+	policy := auth.NewPolicy()
 	modules := []modules.Module{
 		users.NewModule(config, pgxDb, moduleContracts),
-		trainers.NewModule(config, pgxDb, moduleContracts),
-		trainings.NewModule(config, pgxDb, moduleContracts),
+		trainers.NewModule(config, pgxDb, moduleContracts, policy),
+		trainings.NewModule(config, pgxDb, moduleContracts, policy),
 	}
 
 	if err = initModules(ctx, modules); err != nil {

@@ -61,6 +61,37 @@ func (r *userRepo) GetUserByUUID(ctx context.Context, userID string) (*models.Us
 	return models.UnmarshalUser(row.ID, row.DisplayName, int(row.Balance), role), nil
 }
 
+func (r *userRepo) UpdateDisplayName(ctx context.Context, userID, displayName string) error {
+	rows, err := dbmodels.New(r.db).UpdateDisplayName(ctx, dbmodels.UpdateDisplayNameParams{
+		ID:          userID,
+		DisplayName: displayName,
+	})
+	if err != nil {
+		return fmt.Errorf("error updating display name in database: %w", err)
+	}
+	if rows == 0 {
+		return errUserNotFound(userID)
+	}
+
+	return nil
+}
+
+func (r *userRepo) UpdateUser(ctx context.Context, user *models.User) error {
+	rows, err := dbmodels.New(r.db).UpdateUser(ctx, dbmodels.UpdateUserParams{
+		ID:          user.UUID(),
+		DisplayName: user.DisplayName(),
+		Role:        user.Role().String(),
+	})
+	if err != nil {
+		return fmt.Errorf("error updating user in database: %w", err)
+	}
+	if rows == 0 {
+		return errUserNotFound(user.UUID())
+	}
+
+	return nil
+}
+
 func (r *userRepo) UpdateBalance(ctx context.Context, userID string, amountChange int) (int, error) {
 	balance, err := dbmodels.New(r.db).UpdateBalance(ctx, dbmodels.UpdateBalanceParams{
 		ID:           userID,

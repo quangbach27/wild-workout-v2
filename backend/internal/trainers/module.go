@@ -11,7 +11,8 @@ import (
 	"github.com/quangbach27/golang-common/http"
 
 	"backend/internal/configs"
-	"backend/internal/modules/contracts"
+	"backend/internal/configs/auth"
+	"backend/internal/configs/modules/contracts"
 	"backend/internal/trainers/adapters/db"
 	"backend/internal/trainers/app/commands"
 	"backend/internal/trainers/app/queries"
@@ -25,12 +26,13 @@ type Module struct {
 
 	config    *configs.Config
 	contracts *contracts.Contracts
+	policy    *auth.Policy
 
 	commandsHandler *commands.Handler
 	queriesHandler  *queries.Handler
 }
 
-func NewModule(config *configs.Config, dbPgx *pgxpool.Pool, contracts *contracts.Contracts) *Module {
+func NewModule(config *configs.Config, dbPgx *pgxpool.Pool, contracts *contracts.Contracts, policy *auth.Policy) *Module {
 	errs := []error{}
 	if config == nil {
 		errs = append(errs, errors.New("config can't be nil"))
@@ -41,6 +43,9 @@ func NewModule(config *configs.Config, dbPgx *pgxpool.Pool, contracts *contracts
 	if contracts == nil {
 		errs = append(errs, errors.New("contracts can't be nil"))
 	}
+	if policy == nil {
+		errs = append(errs, errors.New("policy can't be nil"))
+	}
 	if len(errs) != 0 {
 		panic(errors.Join(errs...))
 	}
@@ -49,6 +54,7 @@ func NewModule(config *configs.Config, dbPgx *pgxpool.Pool, contracts *contracts
 		config:    config,
 		dbPgx:     dbPgx,
 		contracts: contracts,
+		policy:    policy,
 	}
 }
 
@@ -78,7 +84,7 @@ func (m *Module) Init(ctx context.Context) error {
 func (m *Module) RegisterHttp(ctx context.Context, publicRouter http.EchoRouter, protectedRouter http.EchoRouter) error {
 	portHttp.Register(
 		protectedRouter,
-		portHttp.NewHandler(m.commandsHandler, m.queriesHandler),
+		portHttp.NewHandler(m.commandsHandler, m.queriesHandler, m.policy),
 	)
 
 	return nil

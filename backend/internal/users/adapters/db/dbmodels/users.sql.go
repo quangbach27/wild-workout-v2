@@ -67,3 +67,42 @@ func (q *Queries) UpdateBalance(ctx context.Context, arg UpdateBalanceParams) (i
 	err := row.Scan(&balance)
 	return balance, err
 }
+
+const updateDisplayName = `-- name: UpdateDisplayName :execrows
+UPDATE users.users
+SET display_name = $1
+WHERE id = $2
+`
+
+type UpdateDisplayNameParams struct {
+	DisplayName string
+	ID          string
+}
+
+func (q *Queries) UpdateDisplayName(ctx context.Context, arg UpdateDisplayNameParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateDisplayName, arg.DisplayName, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const updateUser = `-- name: UpdateUser :execrows
+UPDATE users.users
+SET display_name = $1, role = $2
+WHERE id = $3
+`
+
+type UpdateUserParams struct {
+	DisplayName string
+	Role        string
+	ID          string
+}
+
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateUser, arg.DisplayName, arg.Role, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}

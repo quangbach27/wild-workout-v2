@@ -5,17 +5,20 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"log/slog"
+
+	"backend/internal/configs"
+	"backend/internal/configs/modules/contracts"
+	"backend/internal/users/adapters/db"
+	"backend/internal/users/app"
+	"backend/internal/users/ports/module"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	commonDb "github.com/quangbach27/golang-common/db"
 	"github.com/quangbach27/golang-common/http"
+	svix "github.com/svix/svix-webhooks/go"
 
-	"backend/internal/configs"
-	"backend/internal/modules/contracts"
-	"backend/internal/users/adapters/db"
-	"backend/internal/users/app"
 	portHttp "backend/internal/users/ports/http"
-	"backend/internal/users/ports/module"
 )
 
 type Module struct {
@@ -55,6 +58,10 @@ func (m *Module) Init(ctx context.Context) error {
 		return fmt.Errorf("error running migration in module %s: %w", m.Name(), err)
 	}
 
+	if err := m.runSeed(ctx); err != nil {
+		return fmt.Errorf("error seeding users in module %s: %w", m.Name(), err)
+	}
+
 	m.service = app.NewService(db.NewUserRepository(m.dbPgx))
 	m.trainersReadModel = db.NewTrainersReadModel(m.dbPgx)
 
@@ -63,7 +70,9 @@ func (m *Module) Init(ctx context.Context) error {
 
 func (m *Module) RegisterHttp(ctx context.Context, publicRouter http.EchoRouter, protectedRouter http.EchoRouter) error {
 	portHttp.Register(protectedRouter, portHttp.NewHandler(m.service, m.trainersReadModel))
-
+	if err := m.registerwebhook(publicRouter); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -84,4 +93,40 @@ func (m *Module) runMigration(ctx context.Context) error {
 		embedMigrations,
 		"adapters/db/migrations",
 	)
+}
+
+func (m *Module) registerwebhook(globalRouter http.EchoRouter) error {
+	if m.config.Clerk.WebhookSigningSecret == "" {
+		slog.Warn("CLERK_WEBHOOK_SIGNING_SECRET is not set, Clerk webhook route is not registered")
+
+		return nil
+	}
+
+	webhookVerifier, err := svix.NewWebhook(m.config.Clerk.WebhookSigningSecret)
+	if err != nil {
+		return fmt.Errorf("failed to init webhook verifier: %w", err)
+	}
+
+	webhookHandler, err := portHttp.NewClerkWebhook(m.service, webhookVerifier)
+	if err != nil {
+		return fmt.Errorf("failed to create webhook handler: %w", err)
+	}
+
+	if err := portHttp.RegisterWebhook(globalRouter, webhookHandler); err != nil {
+		return fmt.Errorf("failed to register webhook: %w", err)
+	}
+
+	return nil
+}
+
+// runSeed inserts the initial users. Existing rows are left untouched.
+// Temporary: delete it (and its call in Init) after the app is deployed.
+func (m *Module) runSeed(ctx context.Context) error {
+	_, err := m.dbPgx.Exec(ctx, `
+		INSERT INTO users.users (id, display_name, balance, role) VALUES
+			('user_3KaKzdEqG0PUdKwSy9w4MSOZ6kh', 'attendee27', 20, 'attendee'),
+			('user_3KaKiiqacUY8hqxq5IOFgqm5gsI', 'trainer27', 20, 'trainer')
+		ON CONFLICT (id) DO NOTHING`)
+
+	return err
 }

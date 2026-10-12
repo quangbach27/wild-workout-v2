@@ -13,23 +13,31 @@ import (
 )
 
 type ScheduleTrainingCmd struct {
-	AttendeeUUID     string
-	AttendeeUsername string
-	TrainerUUID      string
-	TrainerUsername  string
-	Hour             time.Time
-	Notes            string
+	AttendeeUUID string
+	TrainerUUID  string
+	Hour         time.Time
+	Notes        string
 }
 
 // ScheduleTraining books the hour in the trainers module and then stores the training. If storing
 // fails, the hour is released again.
 func (h *Handler) ScheduleTraining(ctx context.Context, cmd ScheduleTrainingCmd) (domain.TrainingUUID, error) {
-	attendee, err := domain.NewUser(cmd.AttendeeUUID, cmd.AttendeeUsername, shared.RoleAttendee)
+	attendeeUser, err := h.modules.GetUser(ctx, client.GetUserRequest{UserUUID: cmd.AttendeeUUID})
 	if err != nil {
 		return domain.TrainingUUID{}, err
 	}
 
-	trainer, err := domain.NewUser(cmd.TrainerUUID, cmd.TrainerUsername, shared.RoleTrainer)
+	trainerUser, err := h.modules.GetUser(ctx, client.GetUserRequest{UserUUID: cmd.TrainerUUID})
+	if err != nil {
+		return domain.TrainingUUID{}, err
+	}
+
+	attendee, err := domain.NewUser(cmd.AttendeeUUID, attendeeUser.DisplayName, shared.RoleAttendee)
+	if err != nil {
+		return domain.TrainingUUID{}, err
+	}
+
+	trainer, err := domain.NewUser(cmd.TrainerUUID, trainerUser.DisplayName, shared.RoleTrainer)
 	if err != nil {
 		return domain.TrainingUUID{}, err
 	}

@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"backend/internal/shared"
 	"backend/internal/trainers/domain"
 	trainersclient "backend/internal/trainers/ports/http/clients"
 	"backend/tests"
@@ -55,6 +56,32 @@ func TestMakeHoursAvailable(t *testing.T) {
 		require.Equal(t, http.StatusConflict, resp.StatusCode())
 		require.NotNil(t, resp.JSON409)
 		assert.Equal(t, "hours-incorrect-status", resp.JSON409.Slug)
+	})
+
+	t.Run("an attendee is forbidden", func(t *testing.T) {
+		t.Parallel()
+
+		resp, err := clients.Trainers.MakeHoursAvailableWithResponse(
+			ctx,
+			makeHoursBody(tests.TomorrowHours(t, 1)),
+			tests.WithAuth(tests.NewSession(common.NewUUIDv7().String(), shared.RoleAttendee.String())),
+		)
+
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusForbidden, resp.StatusCode(), string(resp.Body))
+	})
+
+	t.Run("a session without role is forbidden", func(t *testing.T) {
+		t.Parallel()
+
+		resp, err := clients.Trainers.MakeHoursAvailableWithResponse(
+			ctx,
+			makeHoursBody(tests.TomorrowHours(t, 1)),
+			tests.WithAuth(tests.NewSession(common.NewUUIDv7().String())),
+		)
+
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusForbidden, resp.StatusCode(), string(resp.Body))
 	})
 
 	t.Run("without token is unauthorized", func(t *testing.T) {
@@ -203,7 +230,7 @@ func TestGetTrainerHoursByUUID(t *testing.T) {
 		t.Parallel()
 
 		trainer := newTrainer(t)
-		attendeeToken := tests.NewSession(common.NewUUIDv7().String())
+		attendeeToken := tests.NewSession(common.NewUUIDv7().String(), shared.RoleAttendee.String())
 		hours := tests.TomorrowHours(t, 2)
 		tests.MakeHoursAvailable(ctx, t, clients, trainer.Token, hours)
 		makeHoursNotAvailable(ctx, t, clients, trainer, hours[1:])
@@ -223,7 +250,7 @@ func TestGetTrainerHoursByUUID(t *testing.T) {
 		t.Parallel()
 
 		trainer := newTrainer(t)
-		attendeeToken := tests.NewSession(common.NewUUIDv7().String())
+		attendeeToken := tests.NewSession(common.NewUUIDv7().String(), shared.RoleAttendee.String())
 		hours := tests.TomorrowHours(t, 1)
 		tests.MakeHoursAvailable(ctx, t, clients, trainer.Token, hours)
 
@@ -239,7 +266,7 @@ func TestGetTrainerHoursByUUID(t *testing.T) {
 		t.Parallel()
 
 		trainer := newTrainer(t)
-		attendeeToken := tests.NewSession(common.NewUUIDv7().String())
+		attendeeToken := tests.NewSession(common.NewUUIDv7().String(), shared.RoleAttendee.String())
 		hours := tests.TomorrowHours(t, 1)
 
 		status := trainersclient.Availability
@@ -253,7 +280,7 @@ func TestGetTrainerHoursByUUID(t *testing.T) {
 		t.Parallel()
 
 		trainer := newTrainer(t)
-		attendeeToken := tests.NewSession(common.NewUUIDv7().String())
+		attendeeToken := tests.NewSession(common.NewUUIDv7().String(), shared.RoleAttendee.String())
 		hours := tests.TomorrowHours(t, 1)
 
 		status := trainersclient.GetTrainerHoursByUuidParamsStatus("")
@@ -274,7 +301,7 @@ func TestGetTrainerHoursByUUID(t *testing.T) {
 			ctx,
 			newTrainer(t).UUID,
 			&trainersclient.GetTrainerHoursByUuidParams{From: hours[0], To: hours[0], Status: &status},
-			tests.WithAuth(tests.NewSession(common.NewUUIDv7().String())),
+			tests.WithAuth(tests.NewSession(common.NewUUIDv7().String(), shared.RoleAttendee.String())),
 		)
 
 		require.NoError(t, err)

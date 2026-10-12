@@ -17,7 +17,8 @@ Dev tools (golangci-lint, gofumpt, sqlc, oapi-codegen) are pinned via `go tool`;
 
 - `cmd/main.go` — builds config (`internal/configs`, env-driven), pgx pool and `Svc`; injects `ExternalServices` (e.g. `TokenVerifier`).
 - `internal/svc.go` — wires everything (see startup flow below). `Run` starts the Echo server and closes the pgx pool on context cancel.
-- `internal/modules` — the `Module` interface (`Name`, `Init`, `RegisterHttp`, `RegisterContracts`) and `modules/contracts` (`Contracts` struct + `Verify`).
+- `internal/configs/modules` — the `Module` interface (`Name`, `Init`, `RegisterHttp`, `RegisterContracts`) and `configs/modules/contracts` (`Contracts` struct + `Verify`).
+- `internal/configs/auth` — token verification (`clerk_verifier.go`) and role-based authorization: `Resource`, `Action`, `Permission` (with predefined `auth.HourView`, `auth.TrainingCancel`, ...), a static `Policy` per `shared.Role` and `auth.Authorize(ctx, policy, permission)`. Trainer: hour make-available/make-unavailable/view, training reschedule-request/reschedule-response/cancel/view. Attendee: hour schedule/cancel/view, all training actions. The trainers and trainings HTTP handlers call `auth.Authorize` first (401 without session, 403 when denied or the role is empty/unknown) and use the session it returns; users handlers are not covered. `svc.go` builds the `*Policy` once and passes it to `trainers.NewModule` and `trainings.NewModule`; a new module whose handlers authorize takes it the same way.
 - `internal/{users,trainers,trainings}` — one module each: `module.go`, `domain/`, `app/{commands,queries}`, `ports/{http,module}`, `adapters/db`. `internal/shared` holds types used by several modules (e.g. `shared.Role`).
 - `tests/<module>/` — component tests (see Testing conventions).
 - `docker/` — container build files.
@@ -58,7 +59,7 @@ API specs live at the repo root in `api/openapi/<module>.yml` (e.g. `trainers.ym
 - `trainers/ports/http/openapi.gen.go` — Echo strict-server interface + models (`StrictServerInterface`, implemented by `Handler`).
 - `trainers/ports/http/clients/client.gen.go` — HTTP client used by the component tests in `tests/`.
 
-`trainings/ports/http` follows the same layout from `trainings.yml` (`POST`/`GET /api/v1/trainings`; the GET lists upcoming trainings including canceled ones, paginated with `page` (from 1) and `pageSize` (default 10, max 50); response `{items, pagination: {page, pageSize, total}}`). Handlers read the user from `auth.SessionFromContext` (`UserID`, `Roles`, and `Extra["username"]`, which scheduling requires; the dev mock tokens in `cmd/main.go` and `tests.NewSession` set it, the trainer's username comes from the request body); the session user is the attendee/trainer, never a value from the request.
+`trainings/ports/http` follows the same layout from `trainings.yml` (`POST`/`GET /api/v1/trainings`, `POST /api/v1/trainings/{trainingUuid}/cancel` (204; the role comes from the session, trainer if it has the trainer role; a malformed uuid is a 400); the GET lists upcoming trainings including canceled ones, paginated with `page` (from 1) and `pageSize` (default 10, max 50); response `{items, pagination: {page, pageSize, total}}`). Handlers read the user from the session (`Subject`, `Role`), after `auth.Authorize`. The token carries no username: `ScheduleTraining` and `CancelTraining` look up the display name of each participant with the users contract (`GetUser`, 404 for an unknown user, so both trainer and attendee must exist in `users`), and the `trainerUsername` field of the schedule request is ignored. The session user is the attendee/trainer, never a value from the request.
 
 Never hand-edit `*.gen.go`; change the spec and rerun `make gen`.
 
@@ -70,4 +71,10 @@ Tests use `github.com/stretchr/testify`: `require` for checks that must stop the
 
 ## Config
 
-Env vars (see `.env.example`): `PORT`, `APP_ENV`, `CORS_ALLOWED_ORIGINS`, `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME`, `DB_HOST`, `DB_PORT`. Copy `.env.example` to `.env` before `make up`.
+Env vars (see `.env.example`): `PORT`, `APP_ENV`, `CORS_ALLOWED_ORIGINS`, `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME`, `DB_HOST`, `DB_PORT`. Clerk: `CLERK_SECRET_KEY`, `CLERK_AUTHORIZED_PARTIES` (allowed `azp` origins, `;`-separated) and `CLERK_WEBHOOK_SIGNING_SECRET`. Copy `.env.example` to `.env` before `make up`.
+
+## Authentication (Clerk)
+
+`cmd/main.go` `newTokenVerifier`: with `CLERK_SECRET_KEY` set it uses `internal/clerkauth.Verifier` (`clerk-sdk-go` `jwt.Verify`: signature via cached JWKS, expiry, issuer, plus `azp` against `CLERK_AUTHORIZED_PARTIES`); without it only `APP_ENV=dev` starts, with the fixed mock tokens (component tests always use the stub). The session maps `sub` to `Subject` and the active organization role (`org:trainer` -> `trainer`) to `Role`; there are no custom claims, and usernames and credit are never in the token (usernames come from the users contract).
+
+The `users` module owns role and credit keyed by the Clerk user id. `POST /api/v1/webhooks/clerk` (`users/ports/http/clerk_webhook.go`, public route, registered only when `CLERK_WEBHOOK_SIGNING_SECRET` is set) verifies the Svix signature over the raw body and handles `user.created` (idempotent `EnsureUser`, default role attendee, mirrors the role to Clerk public metadata through `adapters.ClerkRoleMirror` when the secret key is set) and `user.updated` (rename, or create if unknown); other events, including `user.deleted`, are acknowledged and ignored. Locally Clerk needs a tunnel to reach the webhook; there is no get-or-create fallback yet, so without the webhook a new Clerk user has no row in `users` (use the tunnel, or call `POST /api/v1/users/onboard` once).

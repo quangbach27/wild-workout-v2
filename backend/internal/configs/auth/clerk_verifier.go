@@ -5,16 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
-	"github.com/clerk/clerk-sdk-go/v2"
+	clerk "github.com/clerk/clerk-sdk-go/v2"
 	"github.com/clerk/clerk-sdk-go/v2/jwt"
 	commonAuth "github.com/quangbach27/golang-common/http/auth"
 )
-
-type customClaims struct {
-	Username string   `json:"username"`
-	Roles    []string `json:"roles"`
-}
 
 type verifyFn func(ctx context.Context, params *jwt.VerifyParams) (*clerk.SessionClaims, error)
 
@@ -38,9 +34,10 @@ func NewClerkVerifier(secretKey string, authrorizedParties []string) *clerkVerif
 }
 
 func (v *clerkVerifier) Verify(ctx context.Context, token string) (*commonAuth.Session, error) {
-	params := v.buildVerifyParams(token)
-
-	claims, err := v.verify(ctx, params)
+	claims, err := v.verify(
+		ctx,
+		v.buildVerifyParams(token),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify clerk token: %w", err)
 	}
@@ -51,11 +48,7 @@ func (v *clerkVerifier) Verify(ctx context.Context, token string) (*commonAuth.S
 func (v *clerkVerifier) buildVerifyParams(token string) *jwt.VerifyParams {
 	params := &jwt.VerifyParams{
 		Token: token,
-		CustomClaimsConstructor: func(context.Context) any {
-			return &customClaims{}
-		},
 	}
-
 	if len(v.authorizedParties) != 0 {
 		params.AuthorizedPartyHandler = func(azp string) bool {
 			return slices.Contains(v.authorizedParties, azp)
@@ -70,18 +63,17 @@ func (v *clerkVerifier) sessionFromClaims(claims *clerk.SessionClaims) (*commonA
 		return nil, errors.New("token has no subject")
 	}
 
-	custom, _ := claims.Custom.(*customClaims)
-	if custom == nil {
-		custom = &customClaims{}
+	// OrgRole has format: org:{role}
+	var role string
+	roles := strings.Split(claims.ActiveOrganizationRole, ":")
+	if len(roles) == 2 {
+		role = roles[1]
 	}
 
 	session := &commonAuth.Session{
-		UserID: claims.Subject,
-		// Clone so callers can mutate Roles without writing into the decoded claims.
-		Roles: slices.Clone(custom.Roles),
-	}
-	if custom.Username != "" {
-		session.Extra = map[string]any{"username": custom.Username}
+		Subject:   claims.Subject,
+		SessionID: claims.SessionID,
+		Role:      role,
 	}
 
 	return session, nil

@@ -11,6 +11,7 @@ import (
 	common "github.com/quangbach27/golang-common"
 	"github.com/stretchr/testify/require"
 
+	"backend/internal/shared"
 	"backend/internal/trainers/domain"
 	trainersclient "backend/internal/trainers/ports/http/clients"
 	"backend/tests"
@@ -28,7 +29,7 @@ func newTrainer(t *testing.T) testTrainer {
 	trainerUUID := common.NewUUIDv7().String()
 	return testTrainer{
 		UUID:  trainerUUID,
-		Token: tests.NewSession(trainerUUID),
+		Token: tests.NewSession(trainerUUID, shared.RoleTrainer.String()),
 	}
 }
 
