@@ -13,6 +13,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteRouteImport } from './routes/_app/route'
 import { Route as AppSetScheduleRouteImport } from './routes/_app/set-schedule'
 import { Route as AppTrainingsRouteImport } from './routes/_app/trainings'
+import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
+import { Route as SignUpSplatRouteImport } from './routes/sign-up.$'
 import { Route as AppTrainingsScheduleRouteImport } from './routes/_app/trainings_.schedule'
 
 const IndexRoute = IndexRouteImport.update({
@@ -34,6 +36,16 @@ const AppTrainingsRoute = AppTrainingsRouteImport.update({
   path: '/trainings',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const SignInSplatRoute = SignInSplatRouteImport.update({
+  id: '/sign-in/$',
+  path: '/sign-in/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignUpSplatRoute = SignUpSplatRouteImport.update({
+  id: '/sign-up/$',
+  path: '/sign-up/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppTrainingsScheduleRoute = AppTrainingsScheduleRouteImport.update({
   id: '/trainings_/schedule',
   path: '/trainings/schedule',
@@ -44,12 +56,16 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/set-schedule': typeof AppSetScheduleRoute
   '/trainings': typeof AppTrainingsRoute
+  '/sign-in/$': typeof SignInSplatRoute
+  '/sign-up/$': typeof SignUpSplatRoute
   '/trainings/schedule': typeof AppTrainingsScheduleRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/set-schedule': typeof AppSetScheduleRoute
   '/trainings': typeof AppTrainingsRoute
+  '/sign-in/$': typeof SignInSplatRoute
+  '/sign-up/$': typeof SignUpSplatRoute
   '/trainings/schedule': typeof AppTrainingsScheduleRoute
 }
 export interface FileRoutesById {
@@ -58,25 +74,43 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteRouteWithChildren
   '/_app/set-schedule': typeof AppSetScheduleRoute
   '/_app/trainings': typeof AppTrainingsRoute
+  '/sign-in/$': typeof SignInSplatRoute
+  '/sign-up/$': typeof SignUpSplatRoute
   '/_app/trainings_/schedule': typeof AppTrainingsScheduleRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/set-schedule' | '/trainings' | '/trainings/schedule'
+  fullPaths:
+    | '/'
+    | '/set-schedule'
+    | '/trainings'
+    | '/sign-in/$'
+    | '/sign-up/$'
+    | '/trainings/schedule'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/set-schedule' | '/trainings' | '/trainings/schedule'
+  to:
+    | '/'
+    | '/set-schedule'
+    | '/trainings'
+    | '/sign-in/$'
+    | '/sign-up/$'
+    | '/trainings/schedule'
   id:
     | '__root__'
     | '/'
     | '/_app'
     | '/_app/set-schedule'
     | '/_app/trainings'
+    | '/sign-in/$'
+    | '/sign-up/$'
     | '/_app/trainings_/schedule'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRouteRoute: typeof AppRouteRouteWithChildren
+  SignInSplatRoute: typeof SignInSplatRoute
+  SignUpSplatRoute: typeof SignUpSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -109,6 +143,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTrainingsRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/sign-in/$': {
+      id: '/sign-in/$'
+      path: '/sign-in/$'
+      fullPath: '/sign-in/$'
+      preLoaderRoute: typeof SignInSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-up/$': {
+      id: '/sign-up/$'
+      path: '/sign-up/$'
+      fullPath: '/sign-up/$'
+      preLoaderRoute: typeof SignUpSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app/trainings_/schedule': {
       id: '/_app/trainings_/schedule'
       path: '/trainings/schedule'
@@ -138,6 +186,8 @@ const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRouteRoute: AppRouteRouteWithChildren,
+  SignInSplatRoute: SignInSplatRoute,
+  SignUpSplatRoute: SignUpSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

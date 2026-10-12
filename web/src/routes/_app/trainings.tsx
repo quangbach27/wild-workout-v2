@@ -5,6 +5,7 @@ import { CreditBadge } from '@/components/credit-badge';
 import ContentLayout from '@/components/layout/content-layout';
 import { Button } from '@/components/ui/button';
 import TrainingsList from '@/features/trainings/components/trainings-list';
+import { useRole } from '@/lib/role';
 
 export const TRAININGS_URL = '/_app/trainings';
 
@@ -17,11 +18,13 @@ export const Route = createFileRoute('/_app/trainings')({
 });
 
 function TrainingsPage() {
+  const { isAttendee } = useRole();
+
   return (
     <ContentLayout
       title="Your trainings"
       description="Upcoming sessions with your trainer"
-      additionalContent={<AdditionalContent />}
+      additionalContent={isAttendee ? <AdditionalContent /> : undefined}
     >
       <TrainingsList />
     </ContentLayout>

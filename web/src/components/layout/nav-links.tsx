@@ -1,20 +1,27 @@
-import { Link, type LinkProps } from '@tanstack/react-router';
+import { useMemo } from 'react';
+
+import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
+
+import { type Role, useRole } from '@/lib/role';
 
 import { Button } from '../ui/button';
 
-const NavItems: { to: LinkProps['to']; label: string }[] = [
+const navItems: { to: string; label: string; roles: Role[] }[] = [
   {
     to: '/trainings',
     label: 'Trainings',
+    roles: ['trainer', 'attendee'],
   },
   {
     to: '/set-schedule',
     label: 'Set schedule',
+    roles: ['trainer'],
   },
   {
     to: '/trainings/schedule',
     label: 'Schedule training',
+    roles: ['attendee'],
   },
 ];
 
@@ -26,6 +33,14 @@ type NavLinksProps = {
 };
 
 export default function NavLinks(props: NavLinksProps) {
+  const { role } = useRole();
+
+  // Until the role is known only the page every role has is shown
+  const items = useMemo(
+    () => (role ? navItems.filter((item) => item.roles.includes(role)) : []),
+    [role],
+  );
+
   return (
     <nav
       className={cn(
@@ -34,7 +49,7 @@ export default function NavLinks(props: NavLinksProps) {
         props.className,
       )}
     >
-      {NavItems.map((item) => (
+      {items.map((item) => (
         <Button
           key={item.to}
           variant="ghost"

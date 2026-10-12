@@ -15,9 +15,9 @@ export default function AuthProvider(props: { children: React.ReactNode }) {
       publishableKey={env.VITE_CLERK_PUBLISHABLE_KEY}
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
-      signInFallbackRedirectUrl="/trainings"
-      signUpFallbackRedirectUrl="/trainings"
-      afterSignOutUrl="/sign-in"
+      signInForceRedirectUrl="/trainings"
+      signUpForceRedirectUrl="/trainings"
+      afterSignOutUrl="/"
       routerPush={(to) => void router.navigate({ href: to })}
       routerReplace={(to) => void router.navigate({ href: to, replace: true })}
     >

@@ -1,5 +1,5 @@
-import { SignIn } from '@clerk/clerk-react';
-import { createFileRoute } from '@tanstack/react-router';
+import { SignedIn, SignedOut, SignIn } from '@clerk/clerk-react';
+import { createFileRoute, Navigate } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/sign-in/$')({
   component: SignInPage,
@@ -8,8 +8,15 @@ export const Route = createFileRoute('/sign-in/$')({
 // The splat route lets Clerk use sub-paths such as /sign-in/factor-one.
 function SignInPage() {
   return (
-    <main className="flex min-h-dvh items-center justify-center p-4">
-      <SignIn routing="path" path="/sign-in" signUpUrl="/sign-up" />
-    </main>
+    <>
+      <SignedIn>
+        <Navigate to="/trainings" replace />
+      </SignedIn>
+      <SignedOut>
+        <main className="flex min-h-dvh items-center justify-center p-4">
+          <SignIn routing="path" path="/sign-in" signUpUrl="/sign-up" />
+        </main>
+      </SignedOut>
+    </>
   );
 }
