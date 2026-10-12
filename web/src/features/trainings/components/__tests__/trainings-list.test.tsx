@@ -6,6 +6,10 @@ import TrainingsList from '../trainings-list';
 
 jest.mock('@/lib/env', () => ({ env: {} }));
 
+jest.mock('@/lib/role', () => ({
+  useRole: () => ({ role: 'attendee', isTrainer: false, isAttendee: true }),
+}));
+
 jest.mock('@/routes/_app/trainings', () => ({
   TRAININGS_URL: '/_app/trainings',
 }));
