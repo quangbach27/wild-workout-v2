@@ -21,14 +21,14 @@ type clerkVerifier struct {
 
 var _ commonAuth.TokenVerifier = (*clerkVerifier)(nil)
 
-func NewClerkVerifier(secretKey string, authrorizedParties []string) *clerkVerifier {
+func NewClerkVerifier(secretKey string, authorizedParties []string) *clerkVerifier {
 	if secretKey == "" {
 		panic("clerkauth: secret key is required")
 	}
 	clerk.SetKey(secretKey)
 
 	return &clerkVerifier{
-		authorizedParties: authrorizedParties,
+		authorizedParties: authorizedParties,
 		verify:            jwt.Verify,
 	}
 }
