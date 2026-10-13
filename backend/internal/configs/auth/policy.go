@@ -10,23 +10,23 @@ type Policy struct {
 func NewPolicy() *Policy {
 	return &Policy{grants: map[shared.Role]map[Permission]struct{}{
 		shared.RoleTrainer: permissionSet(
-			mustPermission(ResourceHour, ActionMakeAvailable),
-			mustPermission(ResourceHour, ActionMakeUnavailable),
-			mustPermission(ResourceHour, ActionView),
-			mustPermission(ResourceTraining, ActionRescheduleRequest),
-			mustPermission(ResourceTraining, ActionRescheduleResponse),
-			mustPermission(ResourceTraining, ActionCancel),
-			mustPermission(ResourceTraining, ActionView),
+			HourMakeAvailable,
+			HourMakeUnavailable,
+			HourView,
+			TrainingRescheduleRequest,
+			TrainingRescheduleResponse,
+			TrainingCancel,
+			TrainingView,
 		),
 		shared.RoleAttendee: permissionSet(
-			mustPermission(ResourceHour, ActionSchedule),
-			mustPermission(ResourceHour, ActionCancel),
-			mustPermission(ResourceHour, ActionView),
-			mustPermission(ResourceTraining, ActionSchedule),
-			mustPermission(ResourceTraining, ActionRescheduleRequest),
-			mustPermission(ResourceTraining, ActionRescheduleResponse),
-			mustPermission(ResourceTraining, ActionCancel),
-			mustPermission(ResourceTraining, ActionView),
+			HourSchedule,
+			HourCancel,
+			HourView,
+			TrainingSchedule,
+			TrainingRescheduleRequest,
+			TrainingRescheduleResponse,
+			TrainingCancel,
+			TrainingView,
 		),
 	}}
 }
