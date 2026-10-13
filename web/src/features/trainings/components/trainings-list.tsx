@@ -3,7 +3,7 @@ import { Suspense, startTransition, useEffect } from 'react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 
-import ErrorBoundaryFallback from '@/components/query-boundary';
+import { ErrorBoundary } from '@/components/error-boundary';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TRAININGS_URL } from '@/routes/_app/trainings';
 
@@ -66,7 +66,7 @@ function Trainings() {
 
 export default function TrainingsList() {
   return (
-    <ErrorBoundaryFallback>
+    <ErrorBoundary>
       <Suspense
         fallback={
           <div className="flex flex-col gap-3" role="status" aria-busy="true">
@@ -78,6 +78,6 @@ export default function TrainingsList() {
       >
         <Trainings />
       </Suspense>
-    </ErrorBoundaryFallback>
+    </ErrorBoundary>
   );
 }

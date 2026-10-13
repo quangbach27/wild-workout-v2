@@ -36,7 +36,7 @@ func TestScheduleTraining(t *testing.T) {
 	t.Run("attendee schedules an available hour", func(t *testing.T) {
 		t.Parallel()
 
-		trainer, attendee := newUser(shared.RoleTrainer), newOnboardedAttendee(ctx, t, clients)
+		trainer, attendee := newOnboardedTrainer(ctx, t, clients), newOnboardedAttendee(ctx, t, clients)
 		hour := tests.TomorrowHours(t, 1)[0]
 		tests.MakeHoursAvailable(ctx, t, clients, trainer.Token, []time.Time{hour})
 
@@ -51,7 +51,7 @@ func TestScheduleTraining(t *testing.T) {
 	t.Run("the same hour can't be scheduled twice", func(t *testing.T) {
 		t.Parallel()
 
-		trainer := newUser(shared.RoleTrainer)
+		trainer := newOnboardedTrainer(ctx, t, clients)
 		hour := tests.TomorrowHours(t, 1)[0]
 		tests.MakeHoursAvailable(ctx, t, clients, trainer.Token, []time.Time{hour})
 
@@ -65,7 +65,7 @@ func TestScheduleTraining(t *testing.T) {
 	t.Run("an hour that was never made available conflicts", func(t *testing.T) {
 		t.Parallel()
 
-		trainer, attendee := newUser(shared.RoleTrainer), newOnboardedAttendee(ctx, t, clients)
+		trainer, attendee := newOnboardedTrainer(ctx, t, clients), newOnboardedAttendee(ctx, t, clients)
 		hour := tests.TomorrowHours(t, 1)[0]
 
 		resp := scheduleTraining(ctx, t, clients, attendee.Token, body(trainer, hour))
@@ -76,7 +76,7 @@ func TestScheduleTraining(t *testing.T) {
 	t.Run("a trainer can't schedule a training", func(t *testing.T) {
 		t.Parallel()
 
-		trainer := newUser(shared.RoleTrainer)
+		trainer := newOnboardedTrainer(ctx, t, clients)
 		hour := tests.TomorrowHours(t, 1)[0]
 		tests.MakeHoursAvailable(ctx, t, clients, trainer.Token, []time.Time{hour})
 
@@ -89,7 +89,7 @@ func TestScheduleTraining(t *testing.T) {
 	t.Run("missing token is unauthorized", func(t *testing.T) {
 		t.Parallel()
 
-		trainer := newUser(shared.RoleTrainer)
+		trainer := newOnboardedTrainer(ctx, t, clients)
 
 		resp, err := clients.Trainings.ScheduleTrainingWithResponse(ctx, body(trainer, tests.TomorrowHours(t, 1)[0]))
 		require.NoError(t, err)
@@ -97,26 +97,21 @@ func TestScheduleTraining(t *testing.T) {
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode(), string(resp.Body))
 	})
 
-	t.Run("empty trainer username is rejected", func(t *testing.T) {
+	t.Run("an unknown trainer is not found", func(t *testing.T) {
 		t.Parallel()
 
 		trainer, attendee := newUser(shared.RoleTrainer), newOnboardedAttendee(ctx, t, clients)
 		hour := tests.TomorrowHours(t, 1)[0]
-		tests.MakeHoursAvailable(ctx, t, clients, trainer.Token, []time.Time{hour})
 
-		invalid := body(trainer, hour)
-		invalid.TrainerUsername = ""
+		resp := scheduleTraining(ctx, t, clients, attendee.Token, body(trainer, hour))
 
-		resp := scheduleTraining(ctx, t, clients, attendee.Token, invalid)
-
-		assert.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
-		assert.Equal(t, domain.Available, hourStatus(ctx, t, clients, trainer, hour))
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
 
 	t.Run("invalid input is rejected and the hour is untouched", func(t *testing.T) {
 		t.Parallel()
 
-		trainer, attendee := newUser(shared.RoleTrainer), newOnboardedAttendee(ctx, t, clients)
+		trainer, attendee := newOnboardedTrainer(ctx, t, clients), newOnboardedAttendee(ctx, t, clients)
 		hour := tests.TomorrowHours(t, 1)[0]
 		tests.MakeHoursAvailable(ctx, t, clients, trainer.Token, []time.Time{hour})
 
@@ -156,7 +151,7 @@ func TestGetUserTrainings(t *testing.T) {
 	t.Run("trainer and attendee see their upcoming trainings, soonest first", func(t *testing.T) {
 		t.Parallel()
 
-		trainer, attendee := newUser(shared.RoleTrainer), newOnboardedAttendee(ctx, t, clients)
+		trainer, attendee := newOnboardedTrainer(ctx, t, clients), newOnboardedAttendee(ctx, t, clients)
 		hours := tests.TomorrowHours(t, 2)
 		tests.MakeHoursAvailable(ctx, t, clients, trainer.Token, hours)
 
@@ -197,7 +192,7 @@ func TestGetUserTrainings(t *testing.T) {
 	t.Run("pages split the trainings and report the total", func(t *testing.T) {
 		t.Parallel()
 
-		trainer, attendee := newUser(shared.RoleTrainer), newOnboardedAttendee(ctx, t, clients)
+		trainer, attendee := newOnboardedTrainer(ctx, t, clients), newOnboardedAttendee(ctx, t, clients)
 		hours := tests.TomorrowHours(t, 3)
 		tests.MakeHoursAvailable(ctx, t, clients, trainer.Token, hours)
 		for _, hour := range hours {
@@ -268,7 +263,7 @@ func TestCancelTraining(t *testing.T) {
 	schedule := func(t *testing.T) (trainer, attendee testUser, hour time.Time, trainingUUID string) {
 		t.Helper()
 
-		trainer, attendee = newUser(shared.RoleTrainer), newOnboardedAttendee(ctx, t, clients)
+		trainer, attendee = newOnboardedTrainer(ctx, t, clients), newOnboardedAttendee(ctx, t, clients)
 		hour = tests.TomorrowHours(t, 1)[0]
 		tests.MakeHoursAvailable(ctx, t, clients, trainer.Token, []time.Time{hour})
 

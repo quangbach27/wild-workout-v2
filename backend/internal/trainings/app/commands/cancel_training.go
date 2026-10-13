@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"backend/internal/shared"
 	trainersClient "backend/internal/trainers/ports/module/client"
 	"backend/internal/trainings/domain"
 	usersClient "backend/internal/users/ports/module/client"
@@ -11,22 +12,33 @@ import (
 
 type CancelTrainingCmd struct {
 	TrainingUUID domain.TrainingUUID
-	User         domain.User
+	UserUUID     string
+	Role         shared.Role
 }
 
 func (h *Handler) CancelTraining(ctx context.Context, cmd CancelTrainingCmd) error {
+	userInfo, err := h.modules.GetUser(ctx, usersClient.GetUserRequest{UserUUID: cmd.UserUUID})
+	if err != nil {
+		return err
+	}
+
+	user, err := domain.NewUser(cmd.UserUUID, userInfo.DisplayName, cmd.Role)
+	if err != nil {
+		return err
+	}
+
 	canBeCancelForFree := false
 	var attendeeUUID string
 	var trainerUUID string
 	var hour time.Time
 
-	if err := h.trainingRepo.UpdateTraining(ctx, cmd.TrainingUUID, cmd.User, func(ctx context.Context, training *domain.Training) error {
+	if err := h.trainingRepo.UpdateTraining(ctx, cmd.TrainingUUID, user, func(ctx context.Context, training *domain.Training) error {
 		canBeCancelForFree = training.CanBeCanceledForFree()
 		attendeeUUID = training.Attendee().ID()
 		trainerUUID = training.Trainer().ID()
 		hour = training.Hour()
 
-		return training.Cancel(cmd.User)
+		return training.Cancel(user)
 	}); err != nil {
 		return err
 	}

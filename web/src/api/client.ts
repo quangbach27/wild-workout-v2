@@ -31,13 +31,15 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-api.interceptors.request.use((config) => {
-  config.headers.set('Authorization', `Bearer ${getAuthToken()}`);
+api.interceptors.request.use(async (config) => {
+  const token = await getAuthToken();
+
+  if (token) {
+    config.headers.set('Authorization', `Bearer ${token}`);
+  }
   return config;
 });
 
-// The backend returns the payload as-is (no envelope), so success unwraps
-// to the response body and errors are mapped to ApiError.
 api.interceptors.response.use(
   (response) => response.data,
   (error: AxiosError<ApiErrorBody>) => {

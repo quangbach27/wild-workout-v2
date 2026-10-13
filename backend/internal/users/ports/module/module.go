@@ -22,6 +22,20 @@ func New(service *app.Service) *Users {
 	return &Users{service: service}
 }
 
+func (u *Users) GetUser(ctx context.Context, req client.GetUserRequest) (client.GetUserResponse, error) {
+	user, err := u.service.GetUser(ctx, req.UserUUID)
+	if err != nil {
+		return client.GetUserResponse{}, err
+	}
+
+	return client.GetUserResponse{
+		UUID:        user.UUID(),
+		DisplayName: user.DisplayName(),
+		Role:        user.Role().String(),
+		Balance:     user.Balance(),
+	}, nil
+}
+
 func (u *Users) GetBalance(ctx context.Context, req client.GetBalanceRequest) (client.GetBalanceResponse, error) {
 	balance, err := u.service.GetBalance(ctx, req.UserUUID)
 	if err != nil {

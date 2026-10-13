@@ -3,12 +3,11 @@ package http
 import (
 	"context"
 	"errors"
-	"slices"
 
 	common "github.com/quangbach27/golang-common"
 	commonHttp "github.com/quangbach27/golang-common/http"
-	"github.com/quangbach27/golang-common/http/auth"
 
+	"backend/internal/configs/auth"
 	"backend/internal/shared"
 	"backend/internal/trainings/app/commands"
 	"backend/internal/trainings/app/queries"
@@ -18,6 +17,7 @@ import (
 type Handler struct {
 	commands *commands.Handler
 	queries  *queries.Handler
+	policy   *auth.Policy
 }
 
 var _ StrictServerInterface = (*Handler)(nil)
@@ -25,6 +25,7 @@ var _ StrictServerInterface = (*Handler)(nil)
 func NewHandler(
 	commands *commands.Handler,
 	queries *queries.Handler,
+	policy *auth.Policy,
 ) *Handler {
 	var errs []error
 
@@ -35,6 +36,10 @@ func NewHandler(
 		errs = append(errs, errors.New("queries can't be nil"))
 	}
 
+	if policy == nil {
+		errs = append(errs, errors.New("policy can't be nil"))
+	}
+
 	if len(errs) != 0 {
 		panic(errors.Join(errs...))
 	}
@@ -42,6 +47,7 @@ func NewHandler(
 	return &Handler{
 		commands: commands,
 		queries:  queries,
+		policy:   policy,
 	}
 }
 
@@ -55,27 +61,16 @@ func (h *Handler) ScheduleTraining(
 	ctx context.Context,
 	request ScheduleTrainingRequestObject,
 ) (ScheduleTrainingResponseObject, error) {
-	session, err := sessionFromContext(ctx)
+	session, err := auth.Authorize(ctx, h.policy, auth.TrainingSchedule)
 	if err != nil {
 		return nil, err
 	}
 
-	if !slices.Contains(session.Roles, shared.RoleAttendee.String()) {
-		return nil, common.NewForbiddenError("forbidden-role", "only attendees can schedule a training")
-	}
-
-	username, _ := session.Extra["username"].(string)
-	if username == "" {
-		return nil, common.NewUnauthorizedError("missing-username", "session has no username")
-	}
-
 	trainingUUID, err := h.commands.ScheduleTraining(ctx, commands.ScheduleTrainingCmd{
-		AttendeeUUID:     session.UserID,
-		AttendeeUsername: username,
-		TrainerUUID:      request.Body.TrainerUuid,
-		TrainerUsername:  request.Body.TrainerUsername,
-		Hour:             request.Body.Hour,
-		Notes:            request.Body.Notes,
+		AttendeeUUID: session.Subject,
+		TrainerUUID:  request.Body.TrainerUuid,
+		Hour:         request.Body.Hour,
+		Notes:        request.Body.Notes,
 	})
 	if err != nil {
 		return nil, err
@@ -88,24 +83,14 @@ func (h *Handler) CancelTraining(
 	ctx context.Context,
 	request CancelTrainingRequestObject,
 ) (CancelTrainingResponseObject, error) {
-	session, err := sessionFromContext(ctx)
+	session, err := auth.Authorize(ctx, h.policy, auth.TrainingCancel)
 	if err != nil {
 		return nil, err
-	}
-
-	username, _ := session.Extra["username"].(string)
-	if username == "" {
-		return nil, common.NewUnauthorizedError("missing-username", "session has no username")
 	}
 
 	role := shared.RoleAttendee
-	if slices.Contains(session.Roles, shared.RoleTrainer.String()) {
+	if session.Role == shared.RoleTrainer.String() {
 		role = shared.RoleTrainer
-	}
-
-	user, err := domain.NewUser(session.UserID, username, role)
-	if err != nil {
-		return nil, err
 	}
 
 	var trainingUUID domain.TrainingUUID
@@ -115,7 +100,8 @@ func (h *Handler) CancelTraining(
 
 	if err := h.commands.CancelTraining(ctx, commands.CancelTrainingCmd{
 		TrainingUUID: trainingUUID,
-		User:         user,
+		UserUUID:     session.Subject,
+		Role:         role,
 	}); err != nil {
 		return nil, err
 	}
@@ -127,13 +113,13 @@ func (h *Handler) GetUserTrainings(
 	ctx context.Context,
 	request GetUserTrainingsRequestObject,
 ) (GetUserTrainingsResponseObject, error) {
-	session, err := sessionFromContext(ctx)
+	session, err := auth.Authorize(ctx, h.policy, auth.TrainingView)
 	if err != nil {
 		return nil, err
 	}
 
 	query := queries.GetUserTrainingsQuery{
-		UserUUID: session.UserID,
+		UserUUID: session.Subject,
 		Page:     queries.DefaultPage,
 		PageSize: queries.DefaultPageSize,
 	}
@@ -157,15 +143,6 @@ func (h *Handler) GetUserTrainings(
 			Total:    page.Total,
 		},
 	}, nil
-}
-
-func sessionFromContext(ctx context.Context) (*auth.Session, error) {
-	session, ok := auth.SessionFromContext(ctx)
-	if !ok || session.UserID == "" {
-		return nil, common.NewUnauthorizedError("missing-session", "missing session")
-	}
-
-	return session, nil
 }
 
 func trainingsToResponse(trainings []queries.Training) []Training {

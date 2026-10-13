@@ -24,3 +24,9 @@ dist-ssr
 *.sw?
 
 storybook-static
+
+# env files
+.env
+.env.*
+!.env.example*
+!.env.test*

@@ -10,7 +10,7 @@ COPY . .
 
 # Vite inlines VITE_* variables at build time.
 ARG VITE_API_URL
-ARG VITE_MOCK_USER
+ARG VITE_CLERK_PUBLISHABLE_KEY
 ARG VITE_FUTURE_WEEKS
 RUN npm run build
 

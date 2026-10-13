@@ -6,8 +6,8 @@ import (
 
 	common "github.com/quangbach27/golang-common"
 	commonHttp "github.com/quangbach27/golang-common/http"
-	"github.com/quangbach27/golang-common/http/auth"
 
+	"backend/internal/configs/auth"
 	"backend/internal/trainers/app/commands"
 	"backend/internal/trainers/app/queries"
 	"backend/internal/trainers/domain"
@@ -16,6 +16,7 @@ import (
 type Handler struct {
 	commands *commands.Handler
 	queries  *queries.Handler
+	policy   *auth.Policy
 }
 
 var _ StrictServerInterface = (*Handler)(nil)
@@ -23,6 +24,7 @@ var _ StrictServerInterface = (*Handler)(nil)
 func NewHandler(
 	commands *commands.Handler,
 	queries *queries.Handler,
+	policy *auth.Policy,
 ) *Handler {
 	var errs []error
 
@@ -33,6 +35,10 @@ func NewHandler(
 		errs = append(errs, errors.New("queries can't be nil"))
 	}
 
+	if policy == nil {
+		errs = append(errs, errors.New("policy can't be nil"))
+	}
+
 	if len(errs) != 0 {
 		panic(errors.Join(errs...))
 	}
@@ -40,6 +46,7 @@ func NewHandler(
 	return &Handler{
 		commands: commands,
 		queries:  queries,
+		policy:   policy,
 	}
 }
 
@@ -53,13 +60,13 @@ func (h *Handler) GetTrainerHours(
 	ctx context.Context,
 	request GetTrainerHoursRequestObject,
 ) (GetTrainerHoursResponseObject, error) {
-	trainerUUID, err := trainerUUIDFromContext(ctx)
+	session, err := auth.Authorize(ctx, h.policy, auth.HourView)
 	if err != nil {
 		return nil, err
 	}
 
 	dates, err := h.queries.GetTrainerHours(ctx, queries.GetTrainerHoursQuery{
-		TrainerUUID: trainerUUID,
+		TrainerUUID: session.Subject,
 		DateFrom:    request.Params.From,
 		DateTo:      request.Params.To,
 	})
@@ -74,6 +81,10 @@ func (h *Handler) GetTrainerHoursByUuid(
 	ctx context.Context,
 	request GetTrainerHoursByUuidRequestObject,
 ) (GetTrainerHoursByUuidResponseObject, error) {
+	if _, err := auth.Authorize(ctx, h.policy, auth.HourView); err != nil {
+		return nil, err
+	}
+
 	status, err := toDomainHourStatus(request.Params.Status)
 	if err != nil {
 		return nil, err
@@ -96,13 +107,13 @@ func (h *Handler) MakeHoursAvailable(
 	ctx context.Context,
 	request MakeHoursAvailableRequestObject,
 ) (MakeHoursAvailableResponseObject, error) {
-	trainerUUID, err := trainerUUIDFromContext(ctx)
+	session, err := auth.Authorize(ctx, h.policy, auth.HourMakeAvailable)
 	if err != nil {
 		return nil, err
 	}
 
 	if err := h.commands.MakeHourAvailable(ctx, commands.MakeHourAvailableCmd{
-		TrainerUUID: trainerUUID,
+		TrainerUUID: session.Subject,
 		Hours:       request.Body.Hours,
 	}); err != nil {
 		return nil, err
@@ -115,29 +126,19 @@ func (h *Handler) MakeHoursNotAvailable(
 	ctx context.Context,
 	request MakeHoursNotAvailableRequestObject,
 ) (MakeHoursNotAvailableResponseObject, error) {
-	trainerUUID, err := trainerUUIDFromContext(ctx)
+	session, err := auth.Authorize(ctx, h.policy, auth.HourMakeUnavailable)
 	if err != nil {
 		return nil, err
 	}
 
 	if err := h.commands.MakeHourNotAvailable(ctx, commands.MakeHourNotAvailableCmd{
-		TrainerUUID: trainerUUID,
+		TrainerUUID: session.Subject,
 		Hours:       request.Body.Hours,
 	}); err != nil {
 		return nil, err
 	}
 
 	return MakeHoursNotAvailable204Response{}, nil
-}
-
-func trainerUUIDFromContext(ctx context.Context) (string, error) {
-	// TODO: check roles for this session. Only trainer can access this
-	session, ok := auth.SessionFromContext(ctx)
-	if !ok || session.UserID == "" {
-		return "", common.NewUnauthorizedError("missing-session", "missing session")
-	}
-
-	return session.UserID, nil
 }
 
 func toDomainHourStatus(status *GetTrainerHoursByUuidParamsStatus) (*domain.HourStatus, error) {

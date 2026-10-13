@@ -3,7 +3,7 @@ package modules
 import (
 	"context"
 
-	"backend/internal/modules/contracts"
+	"backend/internal/configs/modules/contracts"
 
 	"github.com/quangbach27/golang-common/http"
 )

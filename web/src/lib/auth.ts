@@ -1,12 +1,18 @@
-import { env } from './env';
-
-// Dev-only tokens. The backend registers the same tokens in cmd/main.go
-// when APP_ENV=dev. Replace with real login later.
-export const MOCK_TOKENS = {
-  trainer: 'mock-trainer-token',
-  attendee: 'mock-attendee-token',
-} as const;
-
-export function getAuthToken() {
-  return MOCK_TOKENS[env.VITE_MOCK_USER];
+declare global {
+  interface Window {
+    // Set by <ClerkProvider>; only the part used here.
+    Clerk?: {
+      session?: {
+        getToken(options?: { skipCache?: boolean }): Promise<string | null>;
+      } | null;
+    };
+  }
 }
+
+// Clerk keeps the long-lived session in an HttpOnly cookie and mints short-lived session JWTs.
+// <ClerkProvider> and has a session once the user is signed in, so this also works outside React
+export async function getAuthToken(options?: { skipCache?: boolean }) {
+  return (await window.Clerk?.session?.getToken(options)) ?? null;
+}
+
+export {};

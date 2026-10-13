@@ -16,13 +16,19 @@ func Username(userID string) string {
 }
 
 // NewSession registers a bearer token that authenticates as userID (with username Username(userID))
-// and the given roles, and returns the token.
+// and the given role (only the first of roles is used), and returns the token.
 func NewSession(userID string, roles ...string) string {
 	token := common.NewUUIDv7().String()
+
+	var role string
+	if len(roles) > 0 {
+		role = roles[0]
+	}
+
 	verifier.Add(token, &commonAuth.Session{
-		UserID: userID,
-		Roles:  roles,
-		Extra:  map[string]any{"username": Username(userID)},
+		Subject: userID,
+		Role:    role,
+		Extra:   map[string]any{"username": Username(userID)},
 	})
 
 	return token

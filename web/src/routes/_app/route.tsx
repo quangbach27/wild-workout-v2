@@ -1,4 +1,5 @@
-import { createFileRoute, Outlet } from '@tanstack/react-router';
+import { SignedIn, SignedOut } from '@clerk/clerk-react';
+import { createFileRoute, Navigate, Outlet } from '@tanstack/react-router';
 
 import AppLayoutComponent from '@/components/layout/app-layout';
 
@@ -8,8 +9,15 @@ export const Route = createFileRoute('/_app')({
 
 function AppLayout() {
   return (
-    <AppLayoutComponent>
-      <Outlet />
-    </AppLayoutComponent>
+    <>
+      <SignedIn>
+        <AppLayoutComponent>
+          <Outlet />
+        </AppLayoutComponent>
+      </SignedIn>
+      <SignedOut>
+        <Navigate to="/" replace />
+      </SignedOut>
+    </>
   );
 }

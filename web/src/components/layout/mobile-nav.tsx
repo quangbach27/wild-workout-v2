@@ -5,6 +5,7 @@ import { MenuIcon } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '../ui/sheet';
 
+import LogoutButton from './logout-button';
 import NavLinks from './nav-links';
 import UserInfo from './user-info';
 
@@ -30,9 +31,7 @@ export default function MobileNav() {
         <SheetTitle className="sr-only">Menu</SheetTitle>
         <UserInfo />
         <NavLinks vertical onNavigate={() => setOpen(false)} />
-        <Button size="lg" variant="outline" className="mt-auto w-full">
-          Logout
-        </Button>
+        <LogoutButton className="mt-auto w-full" />
       </SheetContent>
     </Sheet>
   );

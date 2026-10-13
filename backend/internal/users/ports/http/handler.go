@@ -3,7 +3,6 @@ package http
 import (
 	"context"
 	"errors"
-	"slices"
 
 	common "github.com/quangbach27/golang-common"
 	commonHttp "github.com/quangbach27/golang-common/http"
@@ -57,20 +56,20 @@ func (h *Handler) OnboardUser(
 	request OnboardUserRequestObject,
 ) (OnboardUserResponseObject, error) {
 	session, ok := auth.SessionFromContext(ctx)
-	if !ok || session.UserID == "" {
+	if !ok || session.Subject == "" {
 		return nil, common.NewUnauthorizedError("missing-session", "missing session")
 	}
 
 	var role shared.Role
 	switch {
-	case slices.Contains(session.Roles, shared.RoleTrainer.String()):
+	case session.Role == shared.RoleTrainer.String():
 		role = shared.RoleTrainer
-	case slices.Contains(session.Roles, shared.RoleAttendee.String()):
+	case session.Role == shared.RoleAttendee.String():
 		role = shared.RoleAttendee
 	}
 
 	err := h.service.OnboardUser(ctx, app.OnboardUserCmd{
-		UUID:        session.UserID,
+		UUID:        session.Subject,
 		DisplayName: request.Body.DisplayName,
 		Role:        role,
 	})
@@ -92,7 +91,7 @@ func (h *Handler) TopUpBalance(
 	request TopUpBalanceRequestObject,
 ) (TopUpBalanceResponseObject, error) {
 	session, ok := auth.SessionFromContext(ctx)
-	if !ok || session.UserID == "" {
+	if !ok || session.Subject == "" {
 		return nil, common.NewUnauthorizedError("missing-session", "missing session")
 	}
 
@@ -108,7 +107,7 @@ func (h *Handler) TopUpBalance(
 	}
 
 	balance, err := h.service.UpdateBalance(ctx, app.UpdateBalanceCmd{
-		UserUUID:     session.UserID,
+		UserUUID:     session.Subject,
 		AmountChange: request.Body.Amount,
 	})
 	if err != nil {
@@ -122,7 +121,7 @@ func (h *Handler) GetTrainers(
 	ctx context.Context,
 	request GetTrainersRequestObject,
 ) (GetTrainersResponseObject, error) {
-	if session, ok := auth.SessionFromContext(ctx); !ok || session.UserID == "" {
+	if session, ok := auth.SessionFromContext(ctx); !ok || session.Subject == "" {
 		return nil, common.NewUnauthorizedError("missing-session", "missing session")
 	}
 

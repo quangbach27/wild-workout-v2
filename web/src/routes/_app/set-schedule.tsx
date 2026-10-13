@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import * as z from 'zod';
 
 import ContentLayout from '@/components/layout/content-layout';
+import RoleGate from '@/components/role-gate';
 import WeeksPicker from '@/features/set-schedule/components/weeks-picker';
 import { WeeksProvider } from '@/features/set-schedule/components/weeks-provider';
 import WeeksScheduleList from '@/features/set-schedule/components/weeks-schedule-list';
@@ -19,14 +20,16 @@ export const Route = createFileRoute('/_app/set-schedule')({
 
 function SetSchedulePage() {
   return (
-    <WeeksProvider>
-      <ContentLayout
-        title="Set your availability"
-        description="Tap an hour to open or close it -- changes save instantly"
-        additionalContent={<WeeksPicker />}
-      >
-        <WeeksScheduleList />
-      </ContentLayout>
-    </WeeksProvider>
+    <RoleGate allow="trainer">
+      <WeeksProvider>
+        <ContentLayout
+          title="Set your availability"
+          description="Tap an hour to open or close it -- changes save instantly"
+          additionalContent={<WeeksPicker />}
+        >
+          <WeeksScheduleList />
+        </ContentLayout>
+      </WeeksProvider>
+    </RoleGate>
   );
 }

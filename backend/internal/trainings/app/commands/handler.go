@@ -22,6 +22,9 @@ type ModulesContract interface {
 		req trainersClient.CancelHourScheduleRequest,
 	) (trainersClient.CancelHourScheduleResponse, error)
 
+	// GetUser returns the user. It returns a 404 common.Error for an unknown user.
+	GetUser(ctx context.Context, req usersClient.GetUserRequest) (usersClient.GetUserResponse, error)
+
 	// UpdateBalance adds AmountChange (negative to spend) to the user's balance. It returns a 404
 	// common.Error for an unknown user and a 409 if the balance would become negative.
 	UpdateBalance(ctx context.Context, req usersClient.UpdateBalanceRequest) (usersClient.UpdateBalanceResponse, error)
