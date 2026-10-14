@@ -49,6 +49,12 @@ variable "instance_type" {
   default     = "t4g.small"
 }
 
+variable "ssh_cidr_blocks" {
+  description = "IPv4 CIDRs allowed to reach SSH (port 22). Restrict to your own IP, e.g. [\"203.0.113.7/32\"]; empty closes the port."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
 variable "root_volume_size" {
   type    = number
   default = 20
