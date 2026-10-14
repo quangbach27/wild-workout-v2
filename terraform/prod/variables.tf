@@ -18,4 +18,5 @@ variable "api_host" {
 variable "certbot_email" {
   description = "Email for Let's Encrypt registration and expiry notices."
   type        = string
+  default     = "buiquangbach27@gmail.com"
 }

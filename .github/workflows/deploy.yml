@@ -47,6 +47,11 @@ jobs:
           INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
           APP: ${{ inputs.app }}
           TAG: ${{ inputs.tag }}
+          REGION: ${{ vars.AWS_REGION }}
+          NAME_PREFIX: ${{ vars.NAME_PREFIX }}
+          DB_SECRET_STORE: ${{ vars.DB_SECRET_STORE }}
+          DB_HOST: ${{ vars.DB_URL }}
+          DB_NAME: ${{ vars.DB_NAME }}
         run: |
           GHCR_REPO="${GITHUB_REPOSITORY,,}"
           case "$APP" in
@@ -55,6 +60,13 @@ jobs:
           esac
 
           COMPOSE_FILE=$(base64 -w0 deployment/docker-compose.prod.yml)
+          # backend.env is rebuilt from Secrets Manager on every deploy; the script and its
+          # settings are base64-encoded so no quoting ends up inside the SSM JSON.
+          ENV_SCRIPT=$(base64 -w0 deployment/write-backend-env.sh)
+          # The GHCR pull token lives in Secrets Manager (<NAME_PREFIX>/ghcr); log in before pulling.
+          LOGIN_SCRIPT=$(base64 -w0 deployment/ghcr-login.sh)
+          ENV_VARS=$(printf 'export REGION=%q NAME_PREFIX=%q DB_SECRET_STORE=%q DB_HOST=%q DB_NAME=%q GHCR_USER=%q\n' \
+            "$REGION" "$NAME_PREFIX" "$DB_SECRET_STORE" "$DB_HOST" "$DB_NAME" "$GITHUB_REPOSITORY_OWNER" | base64 -w0)
 
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
@@ -64,6 +76,11 @@ jobs:
               \"set -e\",
               \"cd /opt/app\",
               \"echo $COMPOSE_FILE | base64 -d > docker-compose.prod.yml\",
+              \"echo $ENV_SCRIPT | base64 -d > write-backend-env.sh\",
+              \"echo $ENV_VARS | base64 -d > write-backend-env.vars\",
+              \"bash -c '. ./write-backend-env.vars && bash ./write-backend-env.sh'\",
+              \"echo $LOGIN_SCRIPT | base64 -d > ghcr-login.sh\",
+              \"bash -c '. ./write-backend-env.vars && bash ./ghcr-login.sh'\",
               \"export GHCR_REPO=$GHCR_REPO $TAG_VAR=$TAG\",
               \"docker compose -f docker-compose.prod.yml pull $SERVICE\",
               \"docker compose -f docker-compose.prod.yml up -d $SERVICE\",
@@ -71,6 +88,9 @@ jobs:
             ]" \
             --query Command.CommandId --output text)
 
-          aws ssm wait command-executed --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID"
+          # The waiter exits non-zero on a failed command; print the result first so the error shows.
+          STATUS=success
+          aws ssm wait command-executed --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" || STATUS=failed
           aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" \
             --query '{Status:Status,Output:StandardOutputContent,Error:StandardErrorContent}'
+          [ "$STATUS" = success ]
