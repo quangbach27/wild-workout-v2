@@ -87,8 +87,24 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v6
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Production runs on an arm64 (Graviton) instance, so build for arm64.
       - name: Build container image
-        run: docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }} -f web/docker/app-prod/Dockerfile web
+        # Vite inlines VITE_* at build time, so the production values come from repository variables.
+        run: |
+          docker buildx build --platform linux/arm64 --load \
+            --build-arg VITE_API_URL=${{ vars.VITE_API_URL }} \
+            --build-arg VITE_CLERK_PUBLISHABLE_KEY=${{ vars.VITE_CLERK_PUBLISHABLE_KEY }} \
+            --build-arg VITE_FUTURE_WEEKS=${{ vars.VITE_FUTURE_WEEKS }} \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }} \
+            -f web/docker/app-prod/Dockerfile web
 
       - uses: anchore/scan-action@v7
         id: scan

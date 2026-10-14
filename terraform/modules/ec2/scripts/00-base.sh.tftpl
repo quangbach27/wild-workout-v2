@@ -1,0 +1,7 @@
+#!/bin/bash
+# Instance bootstrap, one script per concern (scripts/NN-*.sh.tftpl), run in order.
+set -euxo pipefail
+
+# The app itself is deployed under /opt/app by .github/workflows/deploy.yml.
+mkdir -p /opt/app
+chown ec2-user:ec2-user /opt/app

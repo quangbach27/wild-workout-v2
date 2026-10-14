@@ -1,0 +1,8 @@
+
+# --- nginx reverse proxy (certbot adds the 443 blocks and the http -> https redirect) ---
+dnf install -y nginx
+
+cat > /etc/nginx/conf.d/app.conf <<'CONF'
+${nginx_conf}
+CONF
+systemctl enable --now nginx

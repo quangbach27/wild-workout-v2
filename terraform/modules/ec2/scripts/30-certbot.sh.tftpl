@@ -1,0 +1,67 @@
+
+# --- certbot (Let's Encrypt) with the nginx plugin ---
+dnf install -y python3-pip augeas-libs
+
+# Renewed by a systemd timer.
+python3 -m venv /opt/certbot
+/opt/certbot/bin/pip install --upgrade pip certbot certbot-nginx
+ln -sf /opt/certbot/bin/certbot /usr/local/bin/certbot
+
+cat > /etc/systemd/system/certbot-renew.service <<'UNIT'
+[Unit]
+Description=Renew Let's Encrypt certificates
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/certbot renew --quiet --deploy-hook "systemctl reload nginx"
+UNIT
+
+cat > /etc/systemd/system/certbot-renew.timer <<'UNIT'
+[Unit]
+Description=Twice-daily certbot renewal
+
+[Timer]
+OnCalendar=*-*-* 03,15:00:00
+RandomizedDelaySec=1h
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+UNIT
+
+# First issuance needs both DNS A records to point at this instance, so retry until they do.
+cat > /usr/local/bin/certbot-issue.sh <<'SCRIPT'
+#!/bin/bash
+set -u
+for host in ${app_host} ${api_host}; do
+  getent hosts "$host" | grep -q "^${eip} " || { echo "$host does not resolve to ${eip} yet"; exit 1; }
+done
+/usr/local/bin/certbot --nginx -d ${app_host} -d ${api_host} \
+  -m ${certbot_email} --agree-tos --no-eff-email --redirect -n
+SCRIPT
+chmod +x /usr/local/bin/certbot-issue.sh
+
+cat > /etc/systemd/system/certbot-issue.service <<'UNIT'
+[Unit]
+Description=Issue the first Let's Encrypt certificate
+ConditionPathExists=!/etc/letsencrypt/live/${app_host}
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/certbot-issue.sh
+UNIT
+
+cat > /etc/systemd/system/certbot-issue.timer <<'UNIT'
+[Unit]
+Description=Retry first certificate issuance until DNS resolves
+
+[Timer]
+OnBootSec=1min
+OnCalendar=*:0/5
+
+[Install]
+WantedBy=timers.target
+UNIT
+
+systemctl daemon-reload
+systemctl enable --now certbot-renew.timer certbot-issue.timer

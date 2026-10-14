@@ -1,0 +1,46 @@
+
+# --- Grafana Alloy: ships Docker container logs and nginx logs to Grafana Cloud Loki ---
+cat > /etc/yum.repos.d/grafana.repo <<'REPO'
+[grafana]
+name=grafana
+baseurl=https://rpm.grafana.com
+repo_gpgcheck=1
+enabled=1
+gpgcheck=1
+gpgkey=https://rpm.grafana.com/gpg.key
+sslverify=1
+sslcacert=/etc/pki/tls/certs/ca-bundle.crt
+REPO
+dnf install -y alloy
+
+cat > /etc/alloy/config.alloy <<'ALLOY'
+${alloy_conf}
+ALLOY
+
+# Credentials (LOKI_URL, LOKI_USER, LOKI_TOKEN) live in Secrets Manager and are read on every
+# start, so rotating the token only needs: put-secret-value + systemctl restart alloy.
+cat > /usr/local/bin/alloy-load-secret.sh <<'SCRIPT'
+#!/bin/bash
+set -euo pipefail
+umask 077
+aws secretsmanager get-secret-value --region ${region} --secret-id ${grafana_secret_id} \
+  --query SecretString --output text > /etc/alloy/alloy.env
+SCRIPT
+chmod 700 /usr/local/bin/alloy-load-secret.sh
+
+# Runs as root: it needs the Docker socket (root-equivalent anyway) and root-only nginx logs.
+mkdir -p /etc/systemd/system/alloy.service.d
+cat > /etc/systemd/system/alloy.service.d/secrets.conf <<'UNIT'
+[Service]
+User=root
+Group=root
+ExecStartPre=/usr/local/bin/alloy-load-secret.sh
+EnvironmentFile=/etc/alloy/alloy.env
+# The secret may not be filled in yet on first boot; retry slowly instead of hammering the API.
+RestartSec=60
+UNIT
+
+systemctl daemon-reload
+# Do not block or fail the bootstrap if the secret has no value yet.
+systemctl enable alloy
+systemctl start --no-block alloy
