@@ -102,8 +102,17 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v6
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Production runs on an arm64 (Graviton) instance, so build for arm64.
       - name: Build container image
-        run: docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }} -f backend/docker/app-prod/Dockerfile backend
+        run: docker buildx build --platform linux/arm64 --load -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }} -f backend/docker/app-prod/Dockerfile backend
 
       - uses: anchore/scan-action@v7
         id: scan

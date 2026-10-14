@@ -1,0 +1,33 @@
+name: "wild-workouts"
+
+# Production stack on the arm64 (t4g) instance, deployed under /opt/app.
+# nginx on the host terminates TLS and proxies to these loopback ports.
+# Images are arm64 builds on public ghcr.io, selected by .github/workflows/deploy.yml
+# through GHCR_REPO (lowercase owner/repo), BACKEND_TAG and WEB_TAG.
+# Shipped to /opt/app/docker-compose.prod.yml by the deploy workflow. Also needed there:
+# backend.env (backend config). Log shipping (Alloy) is host infrastructure, see terraform/.
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  wild-workout-backend:
+    image: ghcr.io/${GHCR_REPO}-backend:${BACKEND_TAG:-latest}
+    platform: linux/arm64
+    restart: unless-stopped
+    logging: *logging
+    env_file:
+      - ./backend.env
+    ports:
+      - "127.0.0.1:4000:4000"
+
+  wild-workout-web:
+    image: ghcr.io/${GHCR_REPO}-web:${WEB_TAG:-latest}
+    platform: linux/arm64
+    restart: unless-stopped
+    logging: *logging
+    ports:
+      - "127.0.0.1:3000:80"
