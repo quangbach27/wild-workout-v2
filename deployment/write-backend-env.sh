@@ -43,5 +43,6 @@ tmp=$(mktemp backend.env.XXXXXX)
   echo "DB_HOST=$DB_HOST"
   echo "DB_NAME=$DB_NAME"
   echo "DB_PORT=5432"
+  echo "DB_SSLMODE=require"
 } > "$tmp"
 mv "$tmp" backend.env

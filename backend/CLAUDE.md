@@ -71,7 +71,7 @@ Tests use `github.com/stretchr/testify`: `require` for checks that must stop the
 
 ## Config
 
-Env vars (see `.env.example`): `PORT`, `APP_ENV`, `CORS_ALLOWED_ORIGINS`, `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME`, `DB_HOST`, `DB_PORT`. Clerk: `CLERK_SECRET_KEY`, `CLERK_AUTHORIZED_PARTIES` (allowed `azp` origins, `;`-separated) and `CLERK_WEBHOOK_SIGNING_SECRET`. Copy `.env.example` to `.env` before `make up`.
+Env vars (see `.env.example`): `PORT`, `APP_ENV`, `CORS_ALLOWED_ORIGINS`, `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME`, `DB_HOST`, `DB_PORT`, `DB_SSLMODE` (default `disable`; the deploy sets `require` because RDS forces SSL). Clerk: `CLERK_SECRET_KEY`, `CLERK_AUTHORIZED_PARTIES` (allowed `azp` origins, `;`-separated) and `CLERK_WEBHOOK_SIGNING_SECRET`. Copy `.env.example` to `.env` before `make up`.
 
 ## Authentication (Clerk)
 

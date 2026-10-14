@@ -20,6 +20,7 @@ type DBConfig struct {
 	Host     string
 	Name     string
 	Port     string
+	SSLMode  string
 }
 
 type ClerkConfig struct {
@@ -33,7 +34,7 @@ type ClerkConfig struct {
 }
 
 func (db *DBConfig) Dsn() string {
-	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", db.Username, db.Password, db.Host, db.Port, db.Name)
+	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", db.Username, db.Password, db.Host, db.Port, db.Name, db.SSLMode)
 }
 
 type Config struct {
@@ -57,6 +58,7 @@ func NewConfig() *Config {
 			Host:     getEnv("DB_HOST", "localhost"),
 			Name:     getEnv("DB_NAME", "sumni-finance"),
 			Port:     getEnv("DB_PORT", "5432"),
+			SSLMode:  getEnv("DB_SSLMODE", "disable"),
 		},
 		Clerk: &ClerkConfig{
 			ClerkSecretKey:       getEnv("CLERK_SECRET_KEY", ""),
