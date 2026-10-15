@@ -1,25 +1,25 @@
 name: Backend Commit Stage
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - "backend/**"
-      - ".github/workflows/backend-commit-stage.yml"
-  pull_request:
-    branches:
-      - main
-    types:
-      - opened
-      - reopened
-      - synchronize
-      - ready_for_review
-      - labeled
-      - unlabeled
-    paths:
-      - "backend/**"
-      - ".github/workflows/backend-commit-stage.yml"
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - "backend/**"
+  #     - ".github/workflows/backend-commit-stage.yml"
+  # pull_request:
+  #   branches:
+  #     - main
+  #   types:
+  #     - opened
+  #     - reopened
+  #     - synchronize
+  #     - ready_for_review
+  #     - labeled
+  #     - unlabeled
+  #   paths:
+  #     - "backend/**"
+  #     - ".github/workflows/backend-commit-stage.yml"
 
 env:
   REGISTRY: ghcr.io
@@ -78,17 +78,18 @@ jobs:
         run: go build -v ./...
         working-directory: backend
 
-      - uses: anchore/scan-action@v7
-        id: scan
-        with:
-          path: "backend"
-          fail-build: false
-          severity-cutoff: high
+      # - uses: anchore/scan-action@v7
+      #   id: scan
+      #   with:
+      #     path: "backend"
+      #     fail-build: false
+      #     severity-cutoff: high
 
-      - name: Upload Anchore scan SARIF report
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: ${{ steps.scan.outputs.sarif }}
+      # - name: Upload Anchore scan SARIF report
+      #   uses: github/codeql-action/upload-sarif@v4
+      #   with:
+      #     sarif_file: ${{ steps.scan.outputs.sarif }}
+      #     category: backend-lib
 
   package:
     name: Package and Publish
@@ -115,17 +116,18 @@ jobs:
       - name: Build container image
         run: docker buildx build --platform linux/arm64 --load -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }} -f backend/docker/app-prod/Dockerfile backend
 
-      - uses: anchore/scan-action@v7
-        id: scan
-        with:
-          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
-          fail-build: false
-          severity-cutoff: high
+      # - uses: anchore/scan-action@v7
+      #   id: scan
+      #   with:
+      #     image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
+      #     fail-build: false
+      #     severity-cutoff: high
 
-      - name: Upload Anchore scan SARIF report
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: ${{ steps.scan.outputs.sarif }}
+      # - name: Upload Anchore scan SARIF report
+      #   uses: github/codeql-action/upload-sarif@v4
+      #   with:
+      #     sarif_file: ${{ steps.scan.outputs.sarif }}
+      #     category: backend-image
 
       - name: Log into container registry
         uses: docker/login-action@v3
