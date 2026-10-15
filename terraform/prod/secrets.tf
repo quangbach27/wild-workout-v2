@@ -8,8 +8,8 @@ module "secrets" {
   secret_names = ["backend", "grafana", "ghcr"]
 }
 
-# Set it with `make set-grafana-secret`. "grafana" holds the Grafana Cloud Loki credentials as plain env lines (read by .github/workflows/deploy.yml
-# into /opt/app/alloy.env for the Alloy log shipper):
+# Set it with `make set-grafana-secret`. "grafana" holds the Grafana Cloud Loki credentials, read by Alloy on every start (see modules/ec2/scripts/40-alloy.sh.tftpl).
+# Either JSON key/value (the console's Key/value editor) or plain env lines work; the env-line form is:
 #   LOKI_URL=https://logs-prod-XXX.grafana.net/loki/api/v1/push
 #   LOKI_USER=<numeric user id>
 #   LOKI_TOKEN=<access token with logs:write>

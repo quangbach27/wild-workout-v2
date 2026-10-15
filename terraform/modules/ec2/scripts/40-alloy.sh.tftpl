@@ -11,7 +11,7 @@ gpgkey=https://rpm.grafana.com/gpg.key
 sslverify=1
 sslcacert=/etc/pki/tls/certs/ca-bundle.crt
 REPO
-dnf install -y alloy
+dnf install -y alloy jq
 
 cat > /etc/alloy/config.alloy <<'ALLOY'
 ${alloy_conf}
@@ -19,12 +19,24 @@ ALLOY
 
 # Credentials (LOKI_URL, LOKI_USER, LOKI_TOKEN) live in Secrets Manager and are read on every
 # start, so rotating the token only needs: put-secret-value + systemctl restart alloy.
+# The secret may be JSON key/value (console editor) or plain KEY=VALUE lines; both become an env file.
 cat > /usr/local/bin/alloy-load-secret.sh <<'SCRIPT'
 #!/bin/bash
 set -euo pipefail
 umask 077
-aws secretsmanager get-secret-value --region ${region} --secret-id ${grafana_secret_id} \
-  --query SecretString --output text > /etc/alloy/alloy.env
+secret="$(aws secretsmanager get-secret-value --region ${region} --secret-id ${grafana_secret_id} \
+  --query SecretString --output text)"
+tmp="$(mktemp /etc/alloy/alloy.env.XXXXXX)"
+trap 'rm -f "$tmp"' EXIT
+if jq -e 'type == "object"' <<<"$secret" >/dev/null 2>&1; then
+  jq -r 'to_entries[] | "\(.key)=\(.value | tojson)"' <<<"$secret" > "$tmp"
+else
+  printf '%s\n' "$secret" > "$tmp"
+fi
+for k in LOKI_URL LOKI_USER LOKI_TOKEN; do
+  grep -q "^$k=." "$tmp" || { echo "secret is missing $k" >&2; exit 1; }
+done
+mv "$tmp" /etc/alloy/alloy.env
 SCRIPT
 chmod 700 /usr/local/bin/alloy-load-secret.sh
 
@@ -35,12 +47,14 @@ cat > /etc/systemd/system/alloy.service.d/secrets.conf <<'UNIT'
 User=root
 Group=root
 ExecStartPre=/usr/local/bin/alloy-load-secret.sh
-EnvironmentFile=/etc/alloy/alloy.env
+# "-": systemd reads this before ExecStartPre, so on first boot the file does not exist yet.
+EnvironmentFile=-/etc/alloy/alloy.env
 # The secret may not be filled in yet on first boot; retry slowly instead of hammering the API.
 RestartSec=60
 UNIT
 
 systemctl daemon-reload
 # Do not block or fail the bootstrap if the secret has no value yet.
+/usr/local/bin/alloy-load-secret.sh || true
 systemctl enable alloy
 systemctl start --no-block alloy
