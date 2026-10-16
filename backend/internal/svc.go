@@ -3,6 +3,13 @@ package internal
 import (
 	"context"
 	"fmt"
+	"net/http"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/labstack/echo/v5"
+	commonHttp "github.com/quangbach27/golang-common/http"
+	commonAuth "github.com/quangbach27/golang-common/http/auth"
+	"golang.org/x/sync/errgroup"
 
 	"backend/internal/configs"
 	"backend/internal/configs/auth"
@@ -11,11 +18,6 @@ import (
 	"backend/internal/trainers"
 	"backend/internal/trainings"
 	"backend/internal/users"
-
-	"github.com/jackc/pgx/v5/pgxpool"
-	commonHttp "github.com/quangbach27/golang-common/http"
-	commonAuth "github.com/quangbach27/golang-common/http/auth"
-	"golang.org/x/sync/errgroup"
 )
 
 type ExternalServices struct {
@@ -40,6 +42,10 @@ func New(
 		func(c *commonHttp.EchoServerConfig) {
 			c.Port = config.App.Port
 			c.AllowedOrigins = config.App.CorsAllowedOrigins
+			c.AuthConfig = commonHttp.AuthConfig{
+				PublicPaths:    []string{"/healthz"},
+				PublicPrefixes: []string{"/public/"},
+			}
 		},
 	)
 	if err != nil {
@@ -62,7 +68,7 @@ func New(
 		return Svc{}, err
 	}
 
-	if err = registerModuleHttp(ctx, modules, echoServer); err != nil {
+	if err = registerModuleHttp(ctx, echoServer.Router(), modules); err != nil {
 		return Svc{}, err
 	}
 
@@ -120,15 +126,15 @@ func registerModuleContracts(
 
 func registerModuleHttp(
 	ctx context.Context,
+	router commonHttp.EchoRouter,
 	modules []modules.Module,
-	echoServer *commonHttp.EchoServer,
 ) error {
+	router.GET("/healthz", func(c *echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	})
+
 	for _, module := range modules {
-		if err := module.RegisterHttp(
-			ctx,
-			echoServer.GlobalRouter(),
-			echoServer.ProtectedRouter(),
-		); err != nil {
+		if err := module.RegisterHttp(ctx, router); err != nil {
 			return fmt.Errorf("error register http in %s module: %w", module.Name(), err)
 		}
 	}
