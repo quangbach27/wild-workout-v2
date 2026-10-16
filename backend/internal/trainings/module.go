@@ -74,8 +74,8 @@ func (m *Module) Init(ctx context.Context) error {
 	return nil
 }
 
-func (m *Module) RegisterHttp(ctx context.Context, publicRouter http.EchoRouter, protectedRouter http.EchoRouter) error {
-	portHttp.Register(protectedRouter, portHttp.NewHandler(m.commandsHandler, m.queriesHandler, m.policy))
+func (m *Module) RegisterHttp(ctx context.Context, router http.EchoRouter) error {
+	portHttp.Register(router, portHttp.NewHandler(m.commandsHandler, m.queriesHandler, m.policy))
 
 	return nil
 }

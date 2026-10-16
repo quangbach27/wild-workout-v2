@@ -68,9 +68,9 @@ func (m *Module) Init(ctx context.Context) error {
 	return nil
 }
 
-func (m *Module) RegisterHttp(ctx context.Context, publicRouter http.EchoRouter, protectedRouter http.EchoRouter) error {
-	portHttp.Register(protectedRouter, portHttp.NewHandler(m.service, m.trainersReadModel))
-	if err := m.registerwebhook(publicRouter); err != nil {
+func (m *Module) RegisterHttp(ctx context.Context, router http.EchoRouter) error {
+	portHttp.Register(router, portHttp.NewHandler(m.service, m.trainersReadModel))
+	if err := m.registerwebhook(router); err != nil {
 		return err
 	}
 	return nil
@@ -95,7 +95,7 @@ func (m *Module) runMigration(ctx context.Context) error {
 	)
 }
 
-func (m *Module) registerwebhook(globalRouter http.EchoRouter) error {
+func (m *Module) registerwebhook(router http.EchoRouter) error {
 	if m.config.Clerk.WebhookSigningSecret == "" {
 		slog.Warn("CLERK_WEBHOOK_SIGNING_SECRET is not set, Clerk webhook route is not registered")
 
@@ -112,7 +112,7 @@ func (m *Module) registerwebhook(globalRouter http.EchoRouter) error {
 		return fmt.Errorf("failed to create webhook handler: %w", err)
 	}
 
-	if err := portHttp.RegisterWebhook(globalRouter, webhookHandler); err != nil {
+	if err := portHttp.RegisterWebhook(router, webhookHandler); err != nil {
 		return fmt.Errorf("failed to register webhook: %w", err)
 	}
 

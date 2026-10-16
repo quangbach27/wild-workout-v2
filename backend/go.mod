@@ -7,7 +7,7 @@ require (
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/labstack/echo/v5 v5.4.0
 	github.com/oapi-codegen/runtime v1.7.0
-	github.com/quangbach27/golang-common v0.0.4
+	github.com/quangbach27/golang-common v0.0.6
 	github.com/stretchr/testify v1.12.1
 	github.com/svix/svix-webhooks v1.99.1
 	golang.org/x/sync v0.24.0
