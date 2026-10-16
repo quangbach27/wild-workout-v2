@@ -61,7 +61,7 @@ export default function NavLinks(props: NavLinksProps) {
           render={
             <Link
               to={item.to}
-              activeOptions={{ exact: true }}
+              activeOptions={{ exact: true, includeSearch: false }}
               onClick={props.onNavigate}
             >
               {item.label}
