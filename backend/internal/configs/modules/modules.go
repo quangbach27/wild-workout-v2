@@ -11,6 +11,6 @@ import (
 type Module interface {
 	Name() string
 	Init(ctx context.Context) error
-	RegisterHttp(ctx context.Context, publicRouter http.EchoRouter, protectedRouter http.EchoRouter) error
+	RegisterHttp(ctx context.Context, router http.EchoRouter) error
 	RegisterContracts(ctx context.Context, contracts *contracts.Contracts) error
 }

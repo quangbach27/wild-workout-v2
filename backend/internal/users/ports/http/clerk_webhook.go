@@ -19,8 +19,8 @@ import (
 )
 
 // ClerkWebhookPath is where Clerk delivers its events. The route is public: it is authenticated by
-// the Svix signature, not by a bearer token.
-const ClerkWebhookPath = "/api/v1/webhooks/clerk"
+// the Svix signature, not by a bearer token; the "/public/" prefix makes the auth middleware skip it.
+const ClerkWebhookPath = "/public/api/v1/webhooks/clerk"
 
 const maxWebhookBodyBytes = 1 << 20
 
@@ -39,8 +39,8 @@ type WebhookHandler struct {
 	verifier WebhookVerifier
 }
 
-func RegisterWebhook(globalRouter commonHttp.EchoRouter, webhookHandler *WebhookHandler) error {
-	globalRouter.POST(ClerkWebhookPath, webhookHandler.handle)
+func RegisterWebhook(router commonHttp.EchoRouter, webhookHandler *WebhookHandler) error {
+	router.POST(ClerkWebhookPath, webhookHandler.handle)
 	return nil
 }
 
