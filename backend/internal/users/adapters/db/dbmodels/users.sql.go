@@ -7,7 +7,22 @@ package dbmodels
 
 import (
 	"context"
+
+	"backend/internal/shared"
 )
+
+const deleteUser = `-- name: DeleteUser :execrows
+DELETE FROM users.users
+WHERE id = $1
+`
+
+func (q *Queries) DeleteUser(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteUser, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
 
 const getUserByUUID = `-- name: GetUserByUUID :one
 SELECT id, display_name, balance, role
@@ -29,14 +44,14 @@ func (q *Queries) GetUserByUUID(ctx context.Context, id string) (UsersUser, erro
 
 const insertUser = `-- name: InsertUser :exec
 INSERT INTO users.users (id, display_name, balance, role)
-VALUES ($1, $2, $3, $4)
+VALUES ($1, $2, $3, $4::users.user_role)
 `
 
 type InsertUserParams struct {
 	ID          string
 	DisplayName string
 	Balance     int32
-	Role        string
+	Role        shared.Role
 }
 
 func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) error {
@@ -68,34 +83,15 @@ func (q *Queries) UpdateBalance(ctx context.Context, arg UpdateBalanceParams) (i
 	return balance, err
 }
 
-const updateDisplayName = `-- name: UpdateDisplayName :execrows
-UPDATE users.users
-SET display_name = $1
-WHERE id = $2
-`
-
-type UpdateDisplayNameParams struct {
-	DisplayName string
-	ID          string
-}
-
-func (q *Queries) UpdateDisplayName(ctx context.Context, arg UpdateDisplayNameParams) (int64, error) {
-	result, err := q.db.Exec(ctx, updateDisplayName, arg.DisplayName, arg.ID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const updateUser = `-- name: UpdateUser :execrows
 UPDATE users.users
-SET display_name = $1, role = $2
+SET display_name = $1, role = $2::users.user_role
 WHERE id = $3
 `
 
 type UpdateUserParams struct {
 	DisplayName string
-	Role        string
+	Role        shared.Role
 	ID          string
 }
 

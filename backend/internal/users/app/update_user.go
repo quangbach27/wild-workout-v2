@@ -6,6 +6,7 @@ import (
 	common "github.com/quangbach27/golang-common"
 
 	"backend/internal/shared"
+	"backend/internal/users/app/models"
 )
 
 // UpdateUserCmd carries the fields to change; nil leaves a field unchanged.
@@ -25,14 +26,7 @@ func (s *Service) UpdateUser(ctx context.Context, cmd UpdateUserCmd) error {
 		return common.NewInvalidInputError("invalid-user-update", "nothing to update")
 	}
 
-	user, err := s.userRepo.GetUserByUUID(ctx, cmd.UUID)
-	if err != nil {
-		return err
-	}
-
-	if err = user.Update(cmd.DisplayName, cmd.Role); err != nil {
-		return err
-	}
-
-	return s.userRepo.UpdateUser(ctx, user)
+	return s.userRepo.UpdateUser(ctx, cmd.UUID, func(user *models.User) error {
+		return user.Update(cmd.DisplayName, cmd.Role)
+	})
 }

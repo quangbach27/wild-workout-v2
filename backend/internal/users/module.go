@@ -29,6 +29,7 @@ type Module struct {
 
 	service           *app.Service
 	trainersReadModel portHttp.TrainersReadModel
+	userReadModel     module.UserReadModel
 }
 
 func NewModule(config *configs.Config, dbPgx *pgxpool.Pool, contracts *contracts.Contracts) *Module {
@@ -64,6 +65,7 @@ func (m *Module) Init(ctx context.Context) error {
 
 	m.service = app.NewService(db.NewUserRepository(m.dbPgx))
 	m.trainersReadModel = db.NewTrainersReadModel(m.dbPgx)
+	m.userReadModel = db.NewUserReadModel(m.dbPgx)
 
 	return nil
 }
@@ -77,7 +79,7 @@ func (m *Module) RegisterHttp(ctx context.Context, router http.EchoRouter) error
 }
 
 func (m *Module) RegisterContracts(ctx context.Context, c *contracts.Contracts) error {
-	c.Users = module.New(m.service)
+	c.Users = module.New(m.service, m.userReadModel)
 
 	return nil
 }

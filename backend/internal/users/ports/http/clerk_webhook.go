@@ -5,17 +5,17 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"log/slog"
 	"net/http"
 	"slices"
 	"strings"
 
-	"backend/internal/shared"
-	"backend/internal/users/app"
-
 	"github.com/labstack/echo/v5"
 	common "github.com/quangbach27/golang-common"
 	commonHttp "github.com/quangbach27/golang-common/http"
+	"github.com/quangbach27/golang-common/log"
+
+	"backend/internal/shared"
+	"backend/internal/users/app"
 )
 
 // ClerkWebhookPath is where Clerk delivers its events. The route is public: it is authenticated by
@@ -72,7 +72,7 @@ type clerkUserData struct {
 	FirstName      string `json:"first_name"`
 	LastName       string `json:"last_name"`
 	PublicMetadata struct {
-		Roles []string `json:"roles"`
+		Roles []shared.Role `json:"roles"`
 	} `json:"public_metadata"`
 }
 
@@ -90,7 +90,7 @@ func (d clerkUserData) displayName() string {
 // role is the role already assigned in Clerk, or attendee. Trainers can only be set from the
 // backend side (public metadata), never by the user.
 func (d clerkUserData) role() shared.Role {
-	if slices.Contains(d.PublicMetadata.Roles, shared.RoleTrainer.String()) {
+	if slices.Contains(d.PublicMetadata.Roles, shared.RoleTrainer) {
 		return shared.RoleTrainer
 	}
 
@@ -98,6 +98,8 @@ func (d clerkUserData) role() shared.Role {
 }
 
 func (w *WebhookHandler) handle(c *echo.Context) error {
+	logger := log.FromContext(c.Request().Context())
+
 	body, err := io.ReadAll(http.MaxBytesReader(c.Response(), c.Request().Body, maxWebhookBodyBytes))
 	if err != nil {
 		return common.NewInvalidInputError("invalid-webhook-body", "can't read the request body")
@@ -113,18 +115,19 @@ func (w *WebhookHandler) handle(c *echo.Context) error {
 	if err := json.Unmarshal(body, &event); err != nil {
 		return common.NewInvalidInputError("invalid-webhook-body", "the request body is not valid json")
 	}
+	logger.Info("Handle Clerk Event", "event", event.Type)
 
 	ctx := c.Request().Context()
 
 	switch event.Type {
 	case "user.created":
-		err = w.userCreated(ctx, event.Data)
+		err = w.createUser(ctx, event.Data)
 	case "user.updated":
-		err = w.userUpdated(ctx, event.Data)
+		err = w.updateUser(ctx, event.Data)
+	case "user.deleted":
+		err = w.service.DeleteUser(ctx, event.Data.ID)
 	default:
-		// user.deleted and the rest: acknowledged, so Clerk does not retry. Deleting would orphan
-		// the user's trainings, so it is left for a later decision.
-		slog.InfoContext(ctx, "ignoring clerk webhook event", "type", event.Type)
+		logger.Info("ignoring clerk webhook event", "type", event.Type)
 	}
 	if err != nil {
 		return err
@@ -133,11 +136,10 @@ func (w *WebhookHandler) handle(c *echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-// userCreated is idempotent: Clerk delivers at least once.
-func (w *WebhookHandler) userCreated(ctx context.Context, data clerkUserData) error {
+func (w *WebhookHandler) createUser(ctx context.Context, data clerkUserData) error {
 	role := data.role()
 
-	if _, err := w.service.EnsureUser(ctx, app.OnboardUserCmd{
+	if err := w.service.OnboardUser(ctx, app.OnboardUserCmd{
 		UUID:        data.ID,
 		DisplayName: data.displayName(),
 		Role:        role,
@@ -148,15 +150,13 @@ func (w *WebhookHandler) userCreated(ctx context.Context, data clerkUserData) er
 	return nil
 }
 
-// userUpdated keeps the display name in sync. Events can arrive before user.created or for users
-// created before the webhook existed, so an unknown user is created instead.
-func (w *WebhookHandler) userUpdated(ctx context.Context, data clerkUserData) error {
-	err := w.service.RenameUser(ctx, data.ID, data.displayName())
+func (w *WebhookHandler) updateUser(ctx context.Context, data clerkUserData) error {
+	displayName := data.displayName()
+	role := data.role()
 
-	var commonErr common.Error
-	if errors.As(err, &commonErr) && commonErr.HttpErrorCode == http.StatusNotFound {
-		return w.userCreated(ctx, data)
-	}
-
-	return err
+	return w.service.UpdateUser(ctx, app.UpdateUserCmd{
+		UUID:        data.ID,
+		DisplayName: &displayName,
+		Role:        &role,
+	})
 }
