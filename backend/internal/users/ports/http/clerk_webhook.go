@@ -5,17 +5,17 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"log/slog"
 	"net/http"
 	"slices"
 	"strings"
 
-	"backend/internal/shared"
-	"backend/internal/users/app"
-
 	"github.com/labstack/echo/v5"
 	common "github.com/quangbach27/golang-common"
 	commonHttp "github.com/quangbach27/golang-common/http"
+	"github.com/quangbach27/golang-common/log"
+
+	"backend/internal/shared"
+	"backend/internal/users/app"
 )
 
 // ClerkWebhookPath is where Clerk delivers its events. The route is public: it is authenticated by
@@ -98,6 +98,8 @@ func (d clerkUserData) role() shared.Role {
 }
 
 func (w *WebhookHandler) handle(c *echo.Context) error {
+	logger := log.FromContext(c.Request().Context())
+
 	body, err := io.ReadAll(http.MaxBytesReader(c.Response(), c.Request().Body, maxWebhookBodyBytes))
 	if err != nil {
 		return common.NewInvalidInputError("invalid-webhook-body", "can't read the request body")
@@ -110,6 +112,7 @@ func (w *WebhookHandler) handle(c *echo.Context) error {
 	}
 
 	var event clerkEvent
+	logger.Info("Handle Clerk Event", "event", event.Type)
 	if err := json.Unmarshal(body, &event); err != nil {
 		return common.NewInvalidInputError("invalid-webhook-body", "the request body is not valid json")
 	}
@@ -124,7 +127,7 @@ func (w *WebhookHandler) handle(c *echo.Context) error {
 	default:
 		// user.deleted and the rest: acknowledged, so Clerk does not retry. Deleting would orphan
 		// the user's trainings, so it is left for a later decision.
-		slog.InfoContext(ctx, "ignoring clerk webhook event", "type", event.Type)
+		logger.Info("ignoring clerk webhook event", "type", event.Type)
 	}
 	if err != nil {
 		return err
