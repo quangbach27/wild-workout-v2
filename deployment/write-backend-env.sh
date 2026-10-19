@@ -22,7 +22,10 @@ def quote(v):
         return "\x27" + v + "\x27"
     return "\"" + v.replace("\\", "\\\\").replace("\"", "\\\"").replace("$", "\\$") + "\""
 
+# GHCR_TOKEN and LOKI_* share this secret but are for the host (docker login, Alloy), not the backend.
 for k, v in json.load(sys.stdin).items():
+    if k == "GHCR_TOKEN" or k.startswith("LOKI_"):
+        continue
     print(f"{k}={quote(v)}")
 '
 }

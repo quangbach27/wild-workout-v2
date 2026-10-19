@@ -8,5 +8,9 @@ locals {
     "CLERK_SECRET_KEY",
     "CLERK_WEBHOOK_SIGNING_SECRET",
     "CORS_ALLOWED_ORIGINS",
+    "GHCR_TOKEN",
+    "LOKI_TOKEN",
+    "LOKI_URL",
+    "LOKI_USER",
   ]
 }
