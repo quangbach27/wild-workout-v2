@@ -1,6 +1,7 @@
 BEGIN;
 
 DROP TABLE IF EXISTS users.users;
+DROP TYPE IF EXISTS users.user_role;
 DROP SCHEMA IF EXISTS users;
 
 COMMIT;

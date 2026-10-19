@@ -9,8 +9,8 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	common "github.com/quangbach27/golang-common"
+	"github.com/quangbach27/golang-common/db"
 
-	"backend/internal/shared"
 	"backend/internal/users/adapters/db/dbmodels"
 	"backend/internal/users/app/models"
 )
@@ -34,7 +34,7 @@ func (r *userRepo) OnboardUser(ctx context.Context, user *models.User) error {
 		ID:          user.UUID(),
 		DisplayName: user.DisplayName(),
 		Balance:     int32(user.Balance()),
-		Role:        user.Role().String(),
+		Role:        user.Role(),
 	})
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == uniqueViolationCode {
@@ -48,7 +48,11 @@ func (r *userRepo) OnboardUser(ctx context.Context, user *models.User) error {
 }
 
 func (r *userRepo) GetUserByUUID(ctx context.Context, userID string) (*models.User, error) {
-	row, err := dbmodels.New(r.db).GetUserByUUID(ctx, userID)
+	return r.getUser(ctx, dbmodels.New(r.db), userID)
+}
+
+func (r *userRepo) getUser(ctx context.Context, queries *dbmodels.Queries, userID string) (*models.User, error) {
+	row, err := queries.GetUserByUUID(ctx, userID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, errUserNotFound(userID)
 	}
@@ -56,37 +60,41 @@ func (r *userRepo) GetUserByUUID(ctx context.Context, userID string) (*models.Us
 		return nil, fmt.Errorf("error retrieving user from database: %w", err)
 	}
 
-	role := shared.Role{Enum: common.MustEnumFromString[shared.RoleType](row.Role)}
-
-	return models.UnmarshalUser(row.ID, row.DisplayName, int(row.Balance), role), nil
+	return models.UnmarshalUser(row.ID, row.DisplayName, int(row.Balance), row.Role), nil
 }
 
-func (r *userRepo) UpdateDisplayName(ctx context.Context, userID, displayName string) error {
-	rows, err := dbmodels.New(r.db).UpdateDisplayName(ctx, dbmodels.UpdateDisplayNameParams{
-		ID:          userID,
-		DisplayName: displayName,
-	})
-	if err != nil {
-		return fmt.Errorf("error updating display name in database: %w", err)
-	}
-	if rows == 0 {
-		return errUserNotFound(userID)
-	}
+func (r *userRepo) UpdateUser(ctx context.Context, userID string, updateFn func(user *models.User) error) error {
+	return db.UpdateInTx(ctx, r.db, func(ctx context.Context, tx pgx.Tx) error {
+		queries := dbmodels.New(tx)
 
-	return nil
+		user, err := r.getUser(ctx, queries, userID)
+		if err != nil {
+			return err
+		}
+
+		if err := updateFn(user); err != nil {
+			return err
+		}
+
+		rows, err := queries.UpdateUser(ctx, dbmodels.UpdateUserParams{
+			ID:          user.UUID(),
+			DisplayName: user.DisplayName(),
+			Role:        user.Role(),
+		})
+		if err != nil {
+			return fmt.Errorf("error updating user in database: %w", err)
+		}
+		if rows == 0 {
+			return errUserNotFound(userID)
+		}
+
+		return nil
+	})
 }
 
-func (r *userRepo) UpdateUser(ctx context.Context, user *models.User) error {
-	rows, err := dbmodels.New(r.db).UpdateUser(ctx, dbmodels.UpdateUserParams{
-		ID:          user.UUID(),
-		DisplayName: user.DisplayName(),
-		Role:        user.Role().String(),
-	})
-	if err != nil {
-		return fmt.Errorf("error updating user in database: %w", err)
-	}
-	if rows == 0 {
-		return errUserNotFound(user.UUID())
+func (r *userRepo) DeleteUser(ctx context.Context, userID string) error {
+	if _, err := dbmodels.New(r.db).DeleteUser(ctx, userID); err != nil {
+		return fmt.Errorf("error deleting user from database: %w", err)
 	}
 
 	return nil

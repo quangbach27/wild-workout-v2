@@ -10,15 +10,14 @@ import (
 
 type UserRepository interface {
 	OnboardUser(ctx context.Context, user *User) error
-	// GetUserByUUID returns a 404 common.Error if the user doesn't exist.
 	GetUserByUUID(ctx context.Context, userID string) (*User, error)
-	// UpdateDisplayName sets the display name. It returns a 404 common.Error if the user doesn't exist.
-	UpdateDisplayName(ctx context.Context, userID, displayName string) error
-	// UpdateUser persists the display name and role. It returns a 404 common.Error if the user doesn't exist.
-	UpdateUser(ctx context.Context, user *User) error
-	// UpdateBalance adds amountChange (negative to spend) to the balance and returns the new one.
-	// It returns a 404 common.Error if the user doesn't exist and a 409 if the balance would
-	// become negative.
+	UpdateUser(
+		ctx context.Context,
+		userID string,
+		updateFn func(user *User) error,
+	) error
+	// DeleteUser removes the user; deleting an unknown user is not an error.
+	DeleteUser(ctx context.Context, userID string) error
 	UpdateBalance(ctx context.Context, userID string, amountChange int) (int, error)
 }
 

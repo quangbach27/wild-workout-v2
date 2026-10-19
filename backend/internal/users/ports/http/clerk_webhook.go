@@ -72,7 +72,7 @@ type clerkUserData struct {
 	FirstName      string `json:"first_name"`
 	LastName       string `json:"last_name"`
 	PublicMetadata struct {
-		Roles []string `json:"roles"`
+		Roles []shared.Role `json:"roles"`
 	} `json:"public_metadata"`
 }
 
@@ -90,7 +90,7 @@ func (d clerkUserData) displayName() string {
 // role is the role already assigned in Clerk, or attendee. Trainers can only be set from the
 // backend side (public metadata), never by the user.
 func (d clerkUserData) role() shared.Role {
-	if slices.Contains(d.PublicMetadata.Roles, shared.RoleTrainer.String()) {
+	if slices.Contains(d.PublicMetadata.Roles, shared.RoleTrainer) {
 		return shared.RoleTrainer
 	}
 
@@ -112,21 +112,21 @@ func (w *WebhookHandler) handle(c *echo.Context) error {
 	}
 
 	var event clerkEvent
-	logger.Info("Handle Clerk Event", "event", event.Type)
 	if err := json.Unmarshal(body, &event); err != nil {
 		return common.NewInvalidInputError("invalid-webhook-body", "the request body is not valid json")
 	}
+	logger.Info("Handle Clerk Event", "event", event.Type)
 
 	ctx := c.Request().Context()
 
 	switch event.Type {
 	case "user.created":
-		err = w.userCreated(ctx, event.Data)
+		err = w.createUser(ctx, event.Data)
 	case "user.updated":
-		err = w.userUpdated(ctx, event.Data)
+		err = w.updateUser(ctx, event.Data)
+	case "user.deleted":
+		err = w.service.DeleteUser(ctx, event.Data.ID)
 	default:
-		// user.deleted and the rest: acknowledged, so Clerk does not retry. Deleting would orphan
-		// the user's trainings, so it is left for a later decision.
 		logger.Info("ignoring clerk webhook event", "type", event.Type)
 	}
 	if err != nil {
@@ -136,11 +136,10 @@ func (w *WebhookHandler) handle(c *echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-// userCreated is idempotent: Clerk delivers at least once.
-func (w *WebhookHandler) userCreated(ctx context.Context, data clerkUserData) error {
+func (w *WebhookHandler) createUser(ctx context.Context, data clerkUserData) error {
 	role := data.role()
 
-	if _, err := w.service.EnsureUser(ctx, app.OnboardUserCmd{
+	if err := w.service.OnboardUser(ctx, app.OnboardUserCmd{
 		UUID:        data.ID,
 		DisplayName: data.displayName(),
 		Role:        role,
@@ -151,15 +150,13 @@ func (w *WebhookHandler) userCreated(ctx context.Context, data clerkUserData) er
 	return nil
 }
 
-// userUpdated keeps the display name in sync. Events can arrive before user.created or for users
-// created before the webhook existed, so an unknown user is created instead.
-func (w *WebhookHandler) userUpdated(ctx context.Context, data clerkUserData) error {
-	err := w.service.RenameUser(ctx, data.ID, data.displayName())
+func (w *WebhookHandler) updateUser(ctx context.Context, data clerkUserData) error {
+	displayName := data.displayName()
+	role := data.role()
 
-	var commonErr common.Error
-	if errors.As(err, &commonErr) && commonErr.HttpErrorCode == http.StatusNotFound {
-		return w.userCreated(ctx, data)
-	}
-
-	return err
+	return w.service.UpdateUser(ctx, app.UpdateUserCmd{
+		UUID:        data.ID,
+		DisplayName: &displayName,
+		Role:        &role,
+	})
 }
