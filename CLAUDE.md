@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Monorepo with a Go backend (`backend/`), a Vite + React frontend (`web/`), and OpenAPI specs (`api/openapi/`) that backend codegen consumes. Early-stage: `trainers` (hours) and `trainings` (schedule a training, cancel a training, list the user's upcoming trainings) are implemented end to end (domain, persistence, HTTP, tests); `users` has onboarding, balance top-up and a paginated trainers list (`app/`, `adapters/db`, `ports/http`, component tests in `backend/tests/users`). See `backend/CLAUDE.md` for deeper backend detail (persistence, OpenAPI codegen, testing conventions).
+Monorepo with a Go backend (`backend/`), a Vite + React frontend (`web/`), and OpenAPI specs (`api/openapi/`) that backend codegen consumes. Early-stage: `trainers` (hours) and `trainings` (schedule a training, cancel a training, list the user's upcoming trainings) are implemented end to end (domain, persistence, HTTP, tests); `users` has onboarding (new attendees start with 20 credit), balance top-up and a paginated trainers list (`app/`, `adapters/db`, `ports/http`, component tests in `backend/tests/users`). See `backend/CLAUDE.md` for deeper backend detail (persistence, OpenAPI codegen, testing conventions).
 
 ## Commands
 

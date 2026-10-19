@@ -37,7 +37,7 @@ func TestUser_Update(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			user, err := models.NewUser("uuid", "Old Name", shared.RoleAttendee)
+			user, err := models.NewUser("uuid", "Old Name", shared.RoleAttendee, 0)
 			require.NoError(t, err)
 
 			err = user.Update(tc.displayName, tc.role)
@@ -51,4 +51,12 @@ func TestUser_Update(t *testing.T) {
 			assert.Equal(t, tc.wantRole, user.Role())
 		})
 	}
+}
+
+func TestNewUser_StartBalance(t *testing.T) {
+	t.Parallel()
+
+	user, err := models.NewUser("uuid", "Name", shared.RoleAttendee, 20)
+	require.NoError(t, err)
+	assert.Equal(t, 20, user.Balance())
 }

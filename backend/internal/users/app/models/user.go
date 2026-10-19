@@ -44,10 +44,15 @@ func (u User) Role() shared.Role {
 	return u.role
 }
 
-// NewUser validates the input and returns a new user with a zero balance. On failure it returns a
+// NewUser validates the input and returns a new user with the given starting balance. On failure it returns a
 // common.Error (400) whose details list each failure (invalid-user-uuid, invalid-user-display-name,
 // invalid-user-role).
-func NewUser(uuid, displayName string, role shared.Role) (*User, error) {
+func NewUser(
+	uuid,
+	displayName string,
+	role shared.Role,
+	startBalance int,
+) (*User, error) {
 	errDetails := []common.ErrorDetails{}
 
 	if uuid == "" {
@@ -78,7 +83,12 @@ func NewUser(uuid, displayName string, role shared.Role) (*User, error) {
 		return nil, common.NewInvalidInputError("invalid-user", "user is not valid").WithDetails(errDetails)
 	}
 
-	return &User{uuid: uuid, displayName: displayName, role: role}, nil
+	return &User{
+		uuid:        uuid,
+		displayName: displayName,
+		role:        role,
+		balance:     startBalance,
+	}, nil
 }
 
 // Update changes the display name and/or role; nil leaves a field unchanged. It returns a

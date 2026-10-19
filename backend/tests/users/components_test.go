@@ -106,6 +106,41 @@ func TestOnboardUser(t *testing.T) {
 	})
 }
 
+func TestOnboardUserStartBalance(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	clients := tests.NewTestClients(t)
+
+	// A top-up of 1 returns the new balance, which exposes the starting balance.
+	balanceAfterOneTopUp := func(t *testing.T, role shared.Role) int {
+		t.Helper()
+
+		user := newUser(role)
+		onboardUser(ctx, t, clients, user, "Jane")
+
+		resp, err := clients.Users.TopUpBalanceWithResponse(
+			ctx, usersclient.TopUpBalanceJSONRequestBody{Amount: 1}, tests.WithAuth(user.Token),
+		)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
+
+		return resp.JSON200.Balance
+	}
+
+	t.Run("attendee starts with 20 credit", func(t *testing.T) {
+		t.Parallel()
+
+		assert.Equal(t, 21, balanceAfterOneTopUp(t, shared.RoleAttendee))
+	})
+
+	t.Run("trainer starts with no credit", func(t *testing.T) {
+		t.Parallel()
+
+		assert.Equal(t, 1, balanceAfterOneTopUp(t, shared.RoleTrainer))
+	})
+}
+
 func TestTopUpBalance(t *testing.T) {
 	t.Parallel()
 
@@ -131,11 +166,11 @@ func TestTopUpBalance(t *testing.T) {
 
 		resp := topUp(t, user, 100)
 		require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
-		assert.Equal(t, 100, resp.JSON200.Balance)
+		assert.Equal(t, 120, resp.JSON200.Balance)
 
 		resp = topUp(t, user, 50)
 		require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
-		assert.Equal(t, 150, resp.JSON200.Balance)
+		assert.Equal(t, 170, resp.JSON200.Balance)
 	})
 
 	t.Run("invalid amount", func(t *testing.T) {
