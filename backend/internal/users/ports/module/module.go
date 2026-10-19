@@ -4,36 +4,46 @@ import (
 	"context"
 	"errors"
 
+	common "github.com/quangbach27/golang-common"
+
 	"backend/internal/users/app"
 	"backend/internal/users/ports/module/client"
 )
 
+// UserReadModel serves the user lookups of the contract without going through the repository.
+type UserReadModel interface {
+	// GetUser returns a 404 common.Error for an unknown user.
+	GetUser(ctx context.Context, userUUID string) (client.GetUserResponse, error)
+}
+
 type Users struct {
-	service *app.Service
+	service       *app.Service
+	userReadModel UserReadModel
 }
 
 var _ client.Users = (*Users)(nil)
 
-func New(service *app.Service) *Users {
+func New(service *app.Service, userReadModel UserReadModel) *Users {
+	errs := []error{}
 	if service == nil {
-		panic(errors.New("service can't be nil"))
+		errs = append(errs, errors.New("service can't be nil"))
+	}
+	if userReadModel == nil {
+		errs = append(errs, errors.New("userReadModel can't be nil"))
+	}
+	if len(errs) != 0 {
+		panic(errors.Join(errs...))
 	}
 
-	return &Users{service: service}
+	return &Users{service: service, userReadModel: userReadModel}
 }
 
 func (u *Users) GetUser(ctx context.Context, req client.GetUserRequest) (client.GetUserResponse, error) {
-	user, err := u.service.GetUser(ctx, req.UserUUID)
-	if err != nil {
-		return client.GetUserResponse{}, err
+	if req.UserUUID == "" {
+		return client.GetUserResponse{}, common.NewInvalidInputError("invalid-user-uuid", "user uuid can't be empty")
 	}
 
-	return client.GetUserResponse{
-		UUID:        user.UUID(),
-		DisplayName: user.DisplayName(),
-		Role:        user.Role().String(),
-		Balance:     user.Balance(),
-	}, nil
+	return u.userReadModel.GetUser(ctx, req.UserUUID)
 }
 
 func (u *Users) GetBalance(ctx context.Context, req client.GetBalanceRequest) (client.GetBalanceResponse, error) {
