@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import type { HourStatus, TrainerHour } from '@/api/trainers/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -39,15 +41,27 @@ const hourFormat = new Intl.DateTimeFormat('en-GB', {
 });
 
 export default function HourCell(props: { hour: TrainerHour }) {
-  const status = STATUS_VIEW[props.hour.status];
+  const [status, setStatus] = useState(STATUS_VIEW[props.hour.status]);
+
   const makeAvailable = useMakeHoursAvailable();
   const makeNotAvailable = useMakeHoursNotAvailable();
 
-  // const isHourPast =
-
   const handleToggleHourCell = () => {
-    if (status === 'open') makeNotAvailable.mutate([props.hour.hour]);
-    else if (status === 'closed') makeAvailable.mutate([props.hour.hour]);
+    if (status === 'open') {
+      setStatus('closed');
+      makeNotAvailable.mutate([props.hour.hour], {
+        onError: () => {
+          setStatus('open');
+        },
+      });
+    } else if (status === 'closed') {
+      setStatus('open');
+      makeAvailable.mutate([props.hour.hour], {
+        onError: () => {
+          setStatus('closed');
+        },
+      });
+    }
   };
 
   return (
