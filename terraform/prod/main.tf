@@ -32,7 +32,7 @@ module "ec2" {
   api_host      = var.api_host
   certbot_email = var.certbot_email
 
-  grafana_secret_id = module.secrets.secret_arns["grafana"]
+  grafana_secret_id = module.secrets.secret_arns["backend"]
 
   secret_arns = concat(
     values(module.secrets.secret_arns),

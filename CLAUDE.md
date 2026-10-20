@@ -24,7 +24,7 @@ When an OpenAPI spec changes, run both `make gen` (backend) and `npm run gen:api
 
 ## Deployment
 
-`.github/workflows/deploy.yml` is a manual `workflow_dispatch` (app: backend or web, tag: commit sha from the commit stage; owner only). It rolls out to a single EC2 instance through AWS SSM, shipping `deployment/docker-compose.prod.yml`, `write-backend-env.sh` (rebuilds `backend.env` from Secrets Manager on each deploy) and `ghcr-login.sh` (GHCR pull token). Infrastructure is Terraform in `terraform/` (`prod/` root, `modules/{vpc,ec2,rds,ssm}`).
+`.github/workflows/deploy.yml` is a manual `workflow_dispatch` (app: backend or web, tag: commit sha from the commit stage; owner only). It rolls out to a single EC2 instance through AWS SSM, shipping `deployment/docker-compose.prod.yml`, `write-backend-env.sh` (rebuilds `backend.env` from Secrets Manager on each deploy) and `ghcr-login.sh` (GHCR pull token). Secrets Manager holds a single secret, `<name>/backend` (JSON): the backend env vars plus `GHCR_TOKEN` and `LOKI_*` (Alloy), which `write-backend-env.sh` keeps out of `backend.env`; `terraform/prod/scripts/set-loki-credentials.sh` merges the Loki keys in. Infrastructure is Terraform in `terraform/` (`prod/` root, `modules/{vpc,ec2,rds,ssm}`).
 
 ## Backend architecture
 

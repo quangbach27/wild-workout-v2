@@ -63,7 +63,7 @@ jobs:
           # backend.env is rebuilt from Secrets Manager on every deploy; the script and its
           # settings are base64-encoded so no quoting ends up inside the SSM JSON.
           ENV_SCRIPT=$(base64 -w0 deployment/write-backend-env.sh)
-          # The GHCR pull token lives in Secrets Manager (<NAME_PREFIX>/ghcr); log in before pulling.
+          # The GHCR pull token lives in Secrets Manager (<NAME_PREFIX>/backend, key GHCR_TOKEN); log in before pulling.
           LOGIN_SCRIPT=$(base64 -w0 deployment/ghcr-login.sh)
           ENV_VARS=$(printf 'export REGION=%q NAME_PREFIX=%q DB_SECRET_STORE=%q DB_HOST=%q DB_NAME=%q GHCR_USER=%q\n' \
             "$REGION" "$NAME_PREFIX" "$DB_SECRET_STORE" "$DB_HOST" "$DB_NAME" "$GITHUB_REPOSITORY_OWNER" | base64 -w0)

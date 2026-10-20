@@ -19,7 +19,7 @@ ALLOY
 
 # Credentials (LOKI_URL, LOKI_USER, LOKI_TOKEN) live in Secrets Manager and are read on every
 # start, so rotating the token only needs: put-secret-value + systemctl restart alloy.
-# The secret may be JSON key/value (console editor) or plain KEY=VALUE lines; both become an env file.
+# The secret is the backend JSON; only its LOKI_* keys go to the env file (plain KEY=VALUE lines also work).
 cat > /usr/local/bin/alloy-load-secret.sh <<'SCRIPT'
 #!/bin/bash
 set -euo pipefail
@@ -29,7 +29,7 @@ secret="$(aws secretsmanager get-secret-value --region ${region} --secret-id ${g
 tmp="$(mktemp /etc/alloy/alloy.env.XXXXXX)"
 trap 'rm -f "$tmp"' EXIT
 if jq -e 'type == "object"' <<<"$secret" >/dev/null 2>&1; then
-  jq -r 'to_entries[] | "\(.key)=\(.value | tojson)"' <<<"$secret" > "$tmp"
+  jq -r 'to_entries[] | select(.key | startswith("LOKI_")) | "\(.key)=\(.value | tojson)"' <<<"$secret" > "$tmp"
 else
   printf '%s\n' "$secret" > "$tmp"
 fi

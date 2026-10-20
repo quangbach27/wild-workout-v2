@@ -39,7 +39,7 @@ variable "api_port" {
 }
 
 variable "grafana_secret_id" {
-  description = "Secrets Manager secret (name or ARN) holding LOKI_URL, LOKI_USER and LOKI_TOKEN as env lines; read by Alloy on every start."
+  description = "Secrets Manager secret (name or ARN), the backend secret, whose JSON holds LOKI_URL, LOKI_USER and LOKI_TOKEN among other keys; read by Alloy on every start."
   type        = string
 }
 
