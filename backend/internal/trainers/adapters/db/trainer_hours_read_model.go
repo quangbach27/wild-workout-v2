@@ -54,12 +54,16 @@ func (rm *TrainerHoursReadModel) GetTrainerHours(
 	ctx context.Context,
 	query queries.GetTrainerHoursQuery,
 ) ([]queries.Date, error) {
-	firstDay := utcDay(query.DateFrom)
-	endExclusive := utcDay(query.DateTo).AddDate(0, 0, 1)
+	start, endExclusive, ok := queryRange(time.Now().UTC(), query.DateFrom, query.DateTo)
+	if !ok {
+		return []queries.Date{}, nil
+	}
+
 
 	status := statusFilter(query)
 	// not available hours are mostly not stored, so they are filtered after building the grid
 	buildGrid := status == nil || *status == domain.NotAvailable
+
 	sqlStatus := status
 	if buildGrid {
 		sqlStatus = nil
@@ -67,7 +71,7 @@ func (rm *TrainerHoursReadModel) GetTrainerHours(
 
 	models, err := dbmodels.New(rm.db).GetHoursInRange(ctx, dbmodels.GetHoursInRangeParams{
 		TrainerUuid: query.TrainerUUID,
-		DateFrom:    firstDay,
+		DateFrom:    start,
 		DateTo:      endExclusive,
 		Status:      sqlStatus,
 	})
@@ -79,12 +83,36 @@ func (rm *TrainerHoursReadModel) GetTrainerHours(
 		return groupByDay(models, *status), nil
 	}
 
-	dates := buildDates(firstDay, endExclusive, rm.hourFactoryConfig, models)
+	dates := buildDates(start, endExclusive, rm.hourFactoryConfig, models)
 	if status != nil {
 		dates = filterByStatus(dates, *status)
 	}
 
 	return dates, nil
+}
+
+func queryRange(now, from, to time.Time) (start, endExclusive time.Time, ok bool) {
+	earliestBookable := ceilHour(now.UTC())
+
+	start = maxTime(earliestBookable, utcDay(from))
+	endExclusive = utcDay(to).AddDate(0, 0, 1)
+
+	return start, endExclusive, start.Before(endExclusive)
+}
+
+func ceilHour(t time.Time) time.Time {
+	tr := t.Truncate(time.Hour)
+	if tr.Equal(t) {
+		return tr
+	}
+	return tr.Add(time.Hour)
+}
+
+func maxTime(a, b time.Time) time.Time {
+	if a.After(b) {
+		return a
+	}
+	return b
 }
 
 // statusFilter returns the status to filter by, or nil for all the statuses (nil or zero status).
