@@ -54,7 +54,7 @@ func (rm *TrainerHoursReadModel) GetTrainerHours(
 	ctx context.Context,
 	query queries.GetTrainerHoursQuery,
 ) ([]queries.Date, error) {
-	firstDay := utcDay(query.DateFrom)
+	start := utcDay(query.DateFrom)
 	endExclusive := utcDay(query.DateTo).AddDate(0, 0, 1)
 
 	status := statusFilter(query)
@@ -67,7 +67,7 @@ func (rm *TrainerHoursReadModel) GetTrainerHours(
 
 	models, err := dbmodels.New(rm.db).GetHoursInRange(ctx, dbmodels.GetHoursInRangeParams{
 		TrainerUuid: query.TrainerUUID,
-		DateFrom:    firstDay,
+		DateFrom:    start,
 		DateTo:      endExclusive,
 		Status:      sqlStatus,
 	})
@@ -79,7 +79,7 @@ func (rm *TrainerHoursReadModel) GetTrainerHours(
 		return groupByDay(models, *status), nil
 	}
 
-	dates := buildDates(firstDay, endExclusive, rm.hourFactoryConfig, models)
+	dates := buildDates(start, endExclusive, rm.hourFactoryConfig, models)
 	if status != nil {
 		dates = filterByStatus(dates, *status)
 	}
@@ -148,7 +148,7 @@ func utcDay(t time.Time) time.Time {
 // buildDates returns one Date per day in [firstDay, endExclusive), each holding every hour from
 // cfg.MinUtcHour to cfg.MaxUtcHour (inclusive). Hours without a row in models are not available.
 func buildDates(
-	firstDay time.Time,
+	start time.Time,
 	endExclusive time.Time,
 	cfg *domain.HourFactoryConfig,
 	models []dbmodels.TrainersHour,
@@ -161,7 +161,7 @@ func buildDates(
 	}
 
 	dates := []queries.Date{}
-	for day := firstDay; day.Before(endExclusive); day = day.AddDate(0, 0, 1) {
+	for day := start; day.Before(endExclusive); day = day.AddDate(0, 0, 1) {
 		date := queries.Date{
 			Date:  day,
 			Hours: make([]queries.Hour, 0, cfg.MaxUtcHour-cfg.MinUtcHour+1),

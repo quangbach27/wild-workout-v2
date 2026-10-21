@@ -24,13 +24,13 @@ function ThisWeekTag(props: { children: string }) {
 
 export default function WeeksPicker() {
   const { weeks, activeWeek } = useWeeksState();
-  const { selectWeek } = useWeeksActions();
+  const { selectWeekRange } = useWeeksActions();
 
   return (
     <Select
       items={weeks.map((w) => ({ value: w.label, label: w.label }))}
       value={activeWeek.label}
-      onValueChange={selectWeek}
+      onValueChange={selectWeekRange}
     >
       <SelectTrigger className="h-10 w-full min-w-52 bg-white md:w-fit">
         <CalendarDaysIcon className="text-muted-foreground" />

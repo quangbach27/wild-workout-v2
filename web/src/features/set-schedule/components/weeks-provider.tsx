@@ -5,7 +5,6 @@ import {
   useEffect,
   useMemo,
   useState,
-  startTransition,
 } from 'react';
 
 import { getRouteApi } from '@tanstack/react-router';
@@ -21,7 +20,7 @@ type WeeksState = {
 };
 
 type WeeksActions = {
-  selectWeek: (label: string | null) => void;
+  selectWeekRange: (label: string | null) => void;
 };
 
 // State and actions live in separate contexts: consumers that only need the
@@ -30,41 +29,43 @@ const WeeksStateContext = createContext<WeeksState | null>(null);
 const WeeksActionsContext = createContext<WeeksActions | null>(null);
 
 export function WeeksProvider(props: { children: React.ReactNode }) {
-  const weeks = useMemo(() => buildWeeks(), []);
   const navigate = route.useNavigate();
+  const { fromDate, toDate } = route.useSearch();
 
-  // The URL is only read on the initial load, to pick the first selected week.
-  // After that it is only written to.
-  const search = route.useSearch();
-  const [initial] = useState(() => ({
-    week: weeks.find(
-      (w) =>
-        w.value.fromDate === search.fromDate &&
-        w.value.toDate === search.toDate,
-    ),
-    hasSearch: search.fromDate !== undefined || search.toDate !== undefined,
-  }));
+  const weeks = useMemo(() => buildWeeks(), []);
 
-  const [activeWeek, setActiveWeek] = useState(() => initial.week ?? weeks[0]);
+  const [initial] = useState(() => {
+    if (!fromDate || !toDate) {
+      return null;
+    }
 
-  // Search params that don't match any week are stale: drop them.
+    return {
+      week: weeks.find(
+        (w) => w.value.fromDate === fromDate && w.value.toDate === toDate,
+      ),
+    };
+  });
+
+  const [activeWeek, setActiveWeek] = useState(() => initial?.week ?? weeks[0]);
+
+  // On first load, check the fromDate and toDate search params. If they don't match any week, remove them.
   useEffect(() => {
-    if (!initial.hasSearch || initial.week) return;
+    if (fromDate && toDate && initial?.week) return;
 
     navigate({
       search: (prev) => ({ ...prev, fromDate: undefined, toDate: undefined }),
       replace: true,
       resetScroll: false,
     });
-  }, [initial, navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigate]);
 
-  const selectWeek = useCallback(
+  const selectWeekRange = useCallback(
     (label: string | null) => {
       const selected = weeks.find((w) => w.label === label);
       if (!selected) return;
 
-      // Keep showing the current grid while the new week loads
-      startTransition(() => setActiveWeek(selected));
+      setActiveWeek(selected);
       navigate({
         search: (prev) => ({
           ...prev,
@@ -79,7 +80,7 @@ export function WeeksProvider(props: { children: React.ReactNode }) {
   );
 
   const state = useMemo(() => ({ weeks, activeWeek }), [weeks, activeWeek]);
-  const actions = useMemo(() => ({ selectWeek }), [selectWeek]);
+  const actions = useMemo(() => ({ selectWeekRange }), [selectWeekRange]);
 
   return (
     <WeeksActionsContext value={actions}>
