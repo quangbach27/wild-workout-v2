@@ -17,23 +17,23 @@ export default function DayColumn(props: { day: TrainerDay }) {
 
   const date = new Date(props.day.date);
   const currentHour = useCurrentHour();
-  const isToday = useMemo(
-    () =>
-      new Date(props.day.date).toDateString() ===
-      new Date(currentHour).toDateString(),
-    [props.day.date, currentHour],
+
+  const isToday =
+    new Date(props.day.date).toDateString() === new Date().toDateString();
+
+  const isPast = useCallback(
+    (hour: string) => {
+      return new Date(hour).getTime() <= currentHour;
+    },
+    [currentHour],
   );
-
   const closedHours = useMemo(() => {
-    const isPast = (h: { hour: string }) =>
-      new Date(h.hour).getTime() < currentHour;
-
     return props.day.hours
-      .filter((hour) => {
-        return !isPast(hour) && hour.status === 'not-availability';
+      .filter((h) => {
+        return !isPast(h.hour) && h.status === 'not-availability';
       })
       .map((hour) => hour.hour);
-  }, [props.day.hours, currentHour]);
+  }, [props.day.hours, isPast]);
 
   const handleOpenAll = useCallback(() => {
     makeAvailable.mutate(closedHours);
@@ -60,9 +60,13 @@ export default function DayColumn(props: { day: TrainerDay }) {
           </Button>
         </DateBadge>
       </div>
-      {props.day.hours.map((hour) => (
-        <HourCell key={hour.hour} hour={hour} />
-      ))}
+      {props.day.hours.map((h) => {
+        if (isPast(h.hour)) {
+          return null;
+        }
+
+        return <HourCell key={h.hour} hour={h} />;
+      })}
     </div>
   );
 }
