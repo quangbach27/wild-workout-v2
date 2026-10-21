@@ -7,21 +7,33 @@ import (
 	"slices"
 	"strings"
 
+	"backend/internal/shared"
+
 	clerk "github.com/clerk/clerk-sdk-go/v2"
 	"github.com/clerk/clerk-sdk-go/v2/jwt"
 	commonAuth "github.com/quangbach27/golang-common/http/auth"
+	"github.com/quangbach27/golang-common/log"
 )
 
 type verifyFn func(ctx context.Context, params *jwt.VerifyParams) (*clerk.SessionClaims, error)
 
+type UserReadModel interface {
+	GetUser(ctx context.Context, userID string) (*shared.User, error)
+}
+
 type clerkVerifier struct {
 	verify            verifyFn
 	authorizedParties []string
+	userReadModel     UserReadModel
 }
 
 var _ commonAuth.TokenVerifier = (*clerkVerifier)(nil)
 
-func NewClerkVerifier(secretKey string, authorizedParties []string) *clerkVerifier {
+func NewClerkVerifier(
+	secretKey string,
+	authorizedParties []string,
+	userReadModel UserReadModel,
+) *clerkVerifier {
 	if secretKey == "" {
 		panic("clerkauth: secret key is required")
 	}
@@ -42,7 +54,7 @@ func (v *clerkVerifier) Verify(ctx context.Context, token string) (*commonAuth.S
 		return nil, fmt.Errorf("failed to verify clerk token: %w", err)
 	}
 
-	return v.sessionFromClaims(claims)
+	return v.sessionFromClaims(ctx, claims)
 }
 
 func (v *clerkVerifier) buildVerifyParams(token string) *jwt.VerifyParams {
@@ -58,7 +70,7 @@ func (v *clerkVerifier) buildVerifyParams(token string) *jwt.VerifyParams {
 	return params
 }
 
-func (v *clerkVerifier) sessionFromClaims(claims *clerk.SessionClaims) (*commonAuth.Session, error) {
+func (v *clerkVerifier) sessionFromClaims(ctx context.Context, claims *clerk.SessionClaims) (*commonAuth.Session, error) {
 	if claims == nil || claims.Subject == "" {
 		return nil, errors.New("token has no subject")
 	}
@@ -68,6 +80,16 @@ func (v *clerkVerifier) sessionFromClaims(claims *clerk.SessionClaims) (*commonA
 	roles := strings.Split(claims.ActiveOrganizationRole, ":")
 	if len(roles) == 2 {
 		role = roles[1]
+	}
+
+	if role == "" {
+		log.FromContext(ctx).Debug("Roles empty in claims. Retrieving role from user database")
+		user, err := v.userReadModel.GetUser(ctx, claims.Subject)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve user info: %w", err)
+		}
+
+		role = user.Role().String()
 	}
 
 	session := &commonAuth.Session{

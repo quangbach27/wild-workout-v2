@@ -11,15 +11,16 @@ import (
 	common "github.com/quangbach27/golang-common"
 	"github.com/quangbach27/golang-common/db"
 
+	"backend/internal/shared"
 	"backend/internal/users/adapters/db/dbmodels"
-	"backend/internal/users/app/models"
+	"backend/internal/users/app"
 )
 
 type userRepo struct {
 	db *pgxpool.Pool
 }
 
-var _ models.UserRepository = (*userRepo)(nil)
+var _ app.UserRepository = (*userRepo)(nil)
 
 func NewUserRepository(pgxDb *pgxpool.Pool) *userRepo {
 	if pgxDb == nil {
@@ -29,7 +30,7 @@ func NewUserRepository(pgxDb *pgxpool.Pool) *userRepo {
 	return &userRepo{db: pgxDb}
 }
 
-func (r *userRepo) OnboardUser(ctx context.Context, user *models.User) error {
+func (r *userRepo) OnboardUser(ctx context.Context, user *shared.User) error {
 	err := dbmodels.New(r.db).InsertUser(ctx, dbmodels.InsertUserParams{
 		ID:          user.UUID(),
 		DisplayName: user.DisplayName(),
@@ -47,11 +48,11 @@ func (r *userRepo) OnboardUser(ctx context.Context, user *models.User) error {
 	return nil
 }
 
-func (r *userRepo) GetUserByUUID(ctx context.Context, userID string) (*models.User, error) {
+func (r *userRepo) GetUserByUUID(ctx context.Context, userID string) (*shared.User, error) {
 	return r.getUser(ctx, dbmodels.New(r.db), userID)
 }
 
-func (r *userRepo) getUser(ctx context.Context, queries *dbmodels.Queries, userID string) (*models.User, error) {
+func (r *userRepo) getUser(ctx context.Context, queries *dbmodels.Queries, userID string) (*shared.User, error) {
 	row, err := queries.GetUserByUUID(ctx, userID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, errUserNotFound(userID)
@@ -60,10 +61,10 @@ func (r *userRepo) getUser(ctx context.Context, queries *dbmodels.Queries, userI
 		return nil, fmt.Errorf("error retrieving user from database: %w", err)
 	}
 
-	return models.UnmarshalUser(row.ID, row.DisplayName, int(row.Balance), row.Role), nil
+	return shared.UnmarshalUser(row.ID, row.DisplayName, int(row.Balance), row.Role), nil
 }
 
-func (r *userRepo) UpdateUser(ctx context.Context, userID string, updateFn func(user *models.User) error) error {
+func (r *userRepo) UpdateUser(ctx context.Context, userID string, updateFn func(user *shared.User) error) error {
 	return db.UpdateInTx(ctx, r.db, func(ctx context.Context, tx pgx.Tx) error {
 		queries := dbmodels.New(tx)
 

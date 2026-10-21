@@ -13,6 +13,7 @@ import (
 	"backend/internal"
 	"backend/internal/configs"
 	"backend/internal/configs/auth"
+	userDB "backend/internal/users/adapters/db"
 )
 
 func main() {
@@ -28,6 +29,8 @@ func main() {
 		panic(err)
 	}
 
+	userReadModel := userDB.NewUserReadModel(dbPgx)
+
 	svc, err := internal.New(
 		ctx,
 		config,
@@ -36,6 +39,7 @@ func main() {
 			TokenVerifier: auth.NewClerkVerifier(
 				config.Clerk.ClerkSecretKey,
 				config.App.CorsAllowedOrigins,
+				userReadModel,
 			),
 		},
 	)

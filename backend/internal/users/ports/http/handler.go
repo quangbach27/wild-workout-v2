@@ -25,14 +25,23 @@ type TrainersReadModel interface {
 	GetTrainers(ctx context.Context, page, pageSize int) (TrainersPage, error)
 }
 
+type UserReadModel interface {
+	GetUser(ctx context.Context, userID string) (*shared.User, error)
+}
+
 type Handler struct {
 	service           *app.Service
 	trainersReadModel TrainersReadModel
+	userReadModel     UserReadModel
 }
 
 var _ StrictServerInterface = (*Handler)(nil)
 
-func NewHandler(service *app.Service, trainersReadModel TrainersReadModel) *Handler {
+func NewHandler(
+	service *app.Service,
+	trainersReadModel TrainersReadModel,
+	userReadModel UserReadModel,
+) *Handler {
 	var errs []error
 
 	if service == nil {
@@ -41,12 +50,19 @@ func NewHandler(service *app.Service, trainersReadModel TrainersReadModel) *Hand
 	if trainersReadModel == nil {
 		errs = append(errs, errors.New("trainersReadModel can't be nil"))
 	}
+	if userReadModel == nil {
+		errs = append(errs, errors.New("userReadModel can't be nil"))
+	}
 
 	if len(errs) != 0 {
 		panic(errors.Join(errs...))
 	}
 
-	return &Handler{service: service, trainersReadModel: trainersReadModel}
+	return &Handler{
+		service:           service,
+		trainersReadModel: trainersReadModel,
+		userReadModel:     userReadModel,
+	}
 }
 
 // OnboardUser creates the session's user. The uuid and the role come from the session, never from
@@ -83,38 +99,6 @@ func (h *Handler) OnboardUser(
 // Register registers the users routes on the protected router.
 func Register(router commonHttp.EchoRouter, h *Handler) {
 	RegisterHandlers(router, NewStrictHandler(h, nil))
-}
-
-// TopUpBalance adds the amount to the balance of the session user. There is no payment step yet.
-func (h *Handler) TopUpBalance(
-	ctx context.Context,
-	request TopUpBalanceRequestObject,
-) (TopUpBalanceResponseObject, error) {
-	session, ok := auth.SessionFromContext(ctx)
-	if !ok || session.Subject == "" {
-		return nil, common.NewUnauthorizedError("missing-session", "missing session")
-	}
-
-	if request.Body.Amount < 1 || request.Body.Amount > maxTopUp {
-		return nil, common.NewInvalidInputError(
-			"invalid-top-up-balance-request",
-			"top up balance request is not valid",
-		).WithDetails([]common.ErrorDetails{{
-			EntityType: "TopUpBalanceRequest",
-			ErrorSlug:  "invalid-amount",
-			Message:    "amount must be between 1 and 1000000",
-		}})
-	}
-
-	balance, err := h.service.UpdateBalance(ctx, app.UpdateBalanceCmd{
-		UserUUID:     session.Subject,
-		AmountChange: request.Body.Amount,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return TopUpBalance200JSONResponse{Balance: balance}, nil
 }
 
 func (h *Handler) GetTrainers(
@@ -172,4 +156,20 @@ func validatePagination(page, pageSize int) error {
 	}
 
 	return nil
+}
+
+// GetUserInfo Retrieve User Info
+// (GET /api/v1/users/{userId})
+func (h *Handler) GetUserInfo(ctx context.Context, request GetUserInfoRequestObject) (GetUserInfoResponseObject, error) {
+	userModel, err := h.userReadModel.GetUser(ctx, request.UserId)
+	if err != nil {
+		return nil, err
+	}
+
+	return GetUserInfo200JSONResponse{
+		Uuid:        userModel.UUID(),
+		DisplayName: userModel.DisplayName(),
+		Balance:     userModel.Balance(),
+		Role:        userModel.Role(),
+	}, nil
 }

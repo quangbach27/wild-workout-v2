@@ -17,12 +17,12 @@ type CancelTrainingCmd struct {
 }
 
 func (h *Handler) CancelTraining(ctx context.Context, cmd CancelTrainingCmd) error {
-	userInfo, err := h.modules.GetUser(ctx, usersClient.GetUserRequest{UserUUID: cmd.UserUUID})
+	userInfo, err := h.modules.GetUser(ctx, usersClient.GetUserRequest{UserID: cmd.UserUUID})
 	if err != nil {
 		return err
 	}
 
-	user, err := domain.NewUser(cmd.UserUUID, userInfo.DisplayName, cmd.Role)
+	user, err := domain.NewUser(cmd.UserUUID, userInfo.DisplayName, userInfo.Role)
 	if err != nil {
 		return err
 	}

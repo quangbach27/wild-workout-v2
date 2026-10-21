@@ -6,11 +6,13 @@ package tests
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	commonAuth "github.com/quangbach27/golang-common/http/auth"
+	commonLog "github.com/quangbach27/golang-common/log"
 
 	"backend/internal"
 	"backend/internal/configs"
@@ -26,6 +28,8 @@ var (
 // It stops with the test process.
 func StartServer(ctx context.Context) {
 	config := configs.NewConfig()
+
+	commonLog.Init(slog.LevelInfo)
 	BaseURL = fmt.Sprintf("http://localhost:%d", config.App.Port)
 
 	db, err := pgxpool.New(ctx, config.DB.Dsn())

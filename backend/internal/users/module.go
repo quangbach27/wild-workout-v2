@@ -7,18 +7,17 @@ import (
 	"fmt"
 	"log/slog"
 
-	"backend/internal/configs"
-	"backend/internal/configs/modules/contracts"
-	"backend/internal/users/adapters/db"
-	"backend/internal/users/app"
-	"backend/internal/users/ports/module"
-
 	"github.com/jackc/pgx/v5/pgxpool"
 	commonDb "github.com/quangbach27/golang-common/db"
 	"github.com/quangbach27/golang-common/http"
 	svix "github.com/svix/svix-webhooks/go"
 
+	"backend/internal/configs"
+	"backend/internal/configs/modules/contracts"
+	"backend/internal/users/adapters/db"
+	"backend/internal/users/app"
 	portHttp "backend/internal/users/ports/http"
+	"backend/internal/users/ports/module"
 )
 
 type Module struct {
@@ -71,7 +70,7 @@ func (m *Module) Init(ctx context.Context) error {
 }
 
 func (m *Module) RegisterHttp(ctx context.Context, router http.EchoRouter) error {
-	portHttp.Register(router, portHttp.NewHandler(m.service, m.trainersReadModel))
+	portHttp.Register(router, portHttp.NewHandler(m.service, m.trainersReadModel, m.userReadModel))
 	if err := m.registerwebhook(router); err != nil {
 		return err
 	}

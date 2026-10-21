@@ -41,9 +41,9 @@ func (r *TrainersReadModel) GetTrainers(ctx context.Context, page, pageSize int)
 		return portHttp.TrainersPage{}, fmt.Errorf("error counting trainers in database: %w", err)
 	}
 
-	items := make([]portHttp.Trainer, 0, len(rows))
+	items := make([]portHttp.User, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, portHttp.Trainer{
+		items = append(items, portHttp.User{
 			Uuid:        row.ID,
 			DisplayName: row.DisplayName,
 			Balance:     int(row.Balance),

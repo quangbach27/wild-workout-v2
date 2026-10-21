@@ -13,13 +13,10 @@ import (
 	"net/url"
 	"strings"
 
+	"backend/internal/shared"
+
 	"github.com/oapi-codegen/runtime"
 )
-
-// Balance defines model for Balance.
-type Balance struct {
-	Balance int `json:"balance"`
-}
 
 // Error defines model for Error.
 type Error struct {
@@ -50,22 +47,21 @@ type Pagination struct {
 	Total int `json:"total"`
 }
 
-// TopUpRequest defines model for TopUpRequest.
-type TopUpRequest struct {
-	Amount int `json:"amount"`
-}
-
-// Trainer defines model for Trainer.
-type Trainer struct {
-	Balance     int    `json:"balance"`
-	DisplayName string `json:"displayName"`
-	Uuid        string `json:"uuid"`
-}
+// Role defines model for Role.
+type Role = shared.Role
 
 // TrainersPage defines model for TrainersPage.
 type TrainersPage struct {
-	Items      []Trainer  `json:"items"`
+	Items      []User     `json:"items"`
 	Pagination Pagination `json:"pagination"`
+}
+
+// User defines model for User.
+type User struct {
+	Balance     int    `json:"balance"`
+	DisplayName string `json:"displayName"`
+	Role        Role   `json:"role"`
+	Uuid        string `json:"uuid"`
 }
 
 // Conflict defines model for Conflict.
@@ -88,9 +84,6 @@ type GetTrainersParams struct {
 	// PageSize Number of trainers per page
 	PageSize *int `form:"pageSize,omitempty" json:"pageSize,omitempty"`
 }
-
-// TopUpBalanceJSONRequestBody defines body for TopUpBalance for application/json ContentType.
-type TopUpBalanceJSONRequestBody = TopUpRequest
 
 // OnboardUserJSONRequestBody defines body for OnboardUser for application/json ContentType.
 type OnboardUserJSONRequestBody = OnboardUserRequest
@@ -176,24 +169,6 @@ type ClientInterface interface {
 	// Corresponds with GET /api/v1/trainers (the `GetTrainers` operationId).
 	GetTrainers(ctx context.Context, params *GetTrainersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// TopUpBalanceWithBody Top up the balance of the session user
-	//
-	// Adds `amount` to the balance of the user from the session and returns the new balance. There is no payment step yet.
-	//
-	// Takes any type of body and a specified content type.
-	//
-	// Corresponds with POST /api/v1/users/balance/top-up (the `TopUpBalance` operationId).
-	TopUpBalanceWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// TopUpBalance Top up the balance of the session user
-	//
-	// Adds `amount` to the balance of the user from the session and returns the new balance. There is no payment step yet.
-	//
-	// Takes a body of the `application/json` content type.
-	//
-	// Corresponds with POST /api/v1/users/balance/top-up (the `TopUpBalance` operationId).
-	TopUpBalance(ctx context.Context, body TopUpBalanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// OnboardUserWithBody Onboard the user from the session
 	//
 	// Creates the user from the session (uuid and role), with a zero balance. The role is the session's trainer or attendee role.
@@ -211,6 +186,11 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /api/v1/users/onboard (the `OnboardUser` operationId).
 	OnboardUser(ctx context.Context, body OnboardUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetUserInfo Retrieve User Info
+	//
+	// Corresponds with GET /api/v1/users/{userId} (the `GetUserInfo` operationId).
+	GetUserInfo(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 // GetTrainers Get the trainers
@@ -220,44 +200,6 @@ type ClientInterface interface {
 // Corresponds with GET /api/v1/trainers (the `GetTrainers` operationId).
 func (c *Client) GetTrainers(ctx context.Context, params *GetTrainersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetTrainersRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// TopUpBalanceWithBody Top up the balance of the session user
-//
-// Adds `amount` to the balance of the user from the session and returns the new balance. There is no payment step yet.
-//
-// Takes any type of body and a specified content type.
-//
-// Corresponds with POST /api/v1/users/balance/top-up (the `TopUpBalance` operationId).
-func (c *Client) TopUpBalanceWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewTopUpBalanceRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// TopUpBalance Top up the balance of the session user
-//
-// Adds `amount` to the balance of the user from the session and returns the new balance. There is no payment step yet.
-//
-// Takes a body of the `application/json` content type.
-//
-// Corresponds with POST /api/v1/users/balance/top-up (the `TopUpBalance` operationId).
-func (c *Client) TopUpBalance(ctx context.Context, body TopUpBalanceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewTopUpBalanceRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -296,6 +238,21 @@ func (c *Client) OnboardUserWithBody(ctx context.Context, contentType string, bo
 // Corresponds with POST /api/v1/users/onboard (the `OnboardUser` operationId).
 func (c *Client) OnboardUser(ctx context.Context, body OnboardUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewOnboardUserRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetUserInfo Retrieve User Info
+//
+// Corresponds with GET /api/v1/users/{userId} (the `GetUserInfo` operationId).
+func (c *Client) GetUserInfo(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetUserInfoRequest(c.Server, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -372,46 +329,6 @@ func NewGetTrainersRequest(server string, params *GetTrainersParams) (*http.Requ
 	return req, nil
 }
 
-// NewTopUpBalanceRequest calls the generic TopUpBalance builder with application/json body
-func NewTopUpBalanceRequest(server string, body TopUpBalanceJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewTopUpBalanceRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewTopUpBalanceRequestWithBody constructs an http.Request for the TopUpBalance method, with any body, and a specified content type
-func NewTopUpBalanceRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1/users/balance/top-up")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
 // NewOnboardUserRequest calls the generic OnboardUser builder with application/json body
 func NewOnboardUserRequest(server string, body OnboardUserJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -448,6 +365,40 @@ func NewOnboardUserRequestWithBody(server string, contentType string, body io.Re
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetUserInfoRequest constructs an http.Request for the GetUserInfo method
+func NewGetUserInfoRequest(server string, userId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "userId", userId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/users/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -505,24 +456,6 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /api/v1/trainers (the `GetTrainers` operationId).
 	GetTrainersWithResponse(ctx context.Context, params *GetTrainersParams, reqEditors ...RequestEditorFn) (*GetTrainersClientResponse, error)
 
-	// TopUpBalanceWithBodyWithResponse Top up the balance of the session user
-	//
-	// Adds `amount` to the balance of the user from the session and returns the new balance. There is no payment step yet.
-	//
-	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
-	//
-	// Corresponds with POST /api/v1/users/balance/top-up (the `TopUpBalance` operationId).
-	TopUpBalanceWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TopUpBalanceClientResponse, error)
-
-	// TopUpBalanceWithResponse Top up the balance of the session user
-	//
-	// Adds `amount` to the balance of the user from the session and returns the new balance. There is no payment step yet.
-	//
-	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	//
-	// Corresponds with POST /api/v1/users/balance/top-up (the `TopUpBalance` operationId).
-	TopUpBalanceWithResponse(ctx context.Context, body TopUpBalanceJSONRequestBody, reqEditors ...RequestEditorFn) (*TopUpBalanceClientResponse, error)
-
 	// OnboardUserWithBodyWithResponse Onboard the user from the session
 	//
 	// Creates the user from the session (uuid and role), with a zero balance. The role is the session's trainer or attendee role.
@@ -540,6 +473,13 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /api/v1/users/onboard (the `OnboardUser` operationId).
 	OnboardUserWithResponse(ctx context.Context, body OnboardUserJSONRequestBody, reqEditors ...RequestEditorFn) (*OnboardUserClientResponse, error)
+
+	// GetUserInfoWithResponse Retrieve User Info
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api/v1/users/{userId} (the `GetUserInfo` operationId).
+	GetUserInfoWithResponse(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*GetUserInfoClientResponse, error)
 }
 
 type GetTrainersClientResponse struct {
@@ -591,68 +531,6 @@ func (r GetTrainersClientResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetTrainersClientResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type TopUpBalanceClientResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *Balance
-	// JSON400 the response for an HTTP 400 `application/json` response
-	JSON400 *InvalidInput
-	// JSON401 the response for an HTTP 401 `application/json` response
-	JSON401 *Unauthorized
-	// JSON404 the response for an HTTP 404 `application/json` response
-	JSON404 *NotFound
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r TopUpBalanceClientResponse) GetJSON200() *Balance {
-	return r.JSON200
-}
-
-// GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r TopUpBalanceClientResponse) GetJSON400() *InvalidInput {
-	return r.JSON400
-}
-
-// GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r TopUpBalanceClientResponse) GetJSON401() *Unauthorized {
-	return r.JSON401
-}
-
-// GetJSON404 returns the response for an HTTP 404 `application/json` response
-func (r TopUpBalanceClientResponse) GetJSON404() *NotFound {
-	return r.JSON404
-}
-
-// GetBody returns the raw response body bytes
-func (r TopUpBalanceClientResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r TopUpBalanceClientResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r TopUpBalanceClientResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r TopUpBalanceClientResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -714,6 +592,61 @@ func (r OnboardUserClientResponse) ContentType() string {
 	return ""
 }
 
+type GetUserInfoClientResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *User
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetUserInfoClientResponse) GetJSON200() *User {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetUserInfoClientResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetUserInfoClientResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetUserInfoClientResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetUserInfoClientResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetUserInfoClientResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetUserInfoClientResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // GetTrainersWithResponse Get the trainers
 //
 // Returns the trainers ordered by display name. The list is paginated with `page` and `pageSize`; `total` is the number of trainers across all pages.
@@ -727,36 +660,6 @@ func (c *ClientWithResponses) GetTrainersWithResponse(ctx context.Context, param
 		return nil, err
 	}
 	return ParseGetTrainersClientResponse(rsp)
-}
-
-// TopUpBalanceWithBodyWithResponse Top up the balance of the session user
-//
-// Adds `amount` to the balance of the user from the session and returns the new balance. There is no payment step yet.
-//
-// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
-//
-// Corresponds with POST /api/v1/users/balance/top-up (the `TopUpBalance` operationId).
-func (c *ClientWithResponses) TopUpBalanceWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TopUpBalanceClientResponse, error) {
-	rsp, err := c.TopUpBalanceWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseTopUpBalanceClientResponse(rsp)
-}
-
-// TopUpBalanceWithResponse Top up the balance of the session user
-//
-// Adds `amount` to the balance of the user from the session and returns the new balance. There is no payment step yet.
-//
-// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-//
-// Corresponds with POST /api/v1/users/balance/top-up (the `TopUpBalance` operationId).
-func (c *ClientWithResponses) TopUpBalanceWithResponse(ctx context.Context, body TopUpBalanceJSONRequestBody, reqEditors ...RequestEditorFn) (*TopUpBalanceClientResponse, error) {
-	rsp, err := c.TopUpBalance(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseTopUpBalanceClientResponse(rsp)
 }
 
 // OnboardUserWithBodyWithResponse Onboard the user from the session
@@ -787,6 +690,19 @@ func (c *ClientWithResponses) OnboardUserWithResponse(ctx context.Context, body 
 		return nil, err
 	}
 	return ParseOnboardUserClientResponse(rsp)
+}
+
+// GetUserInfoWithResponse Retrieve User Info
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api/v1/users/{userId} (the `GetUserInfo` operationId).
+func (c *ClientWithResponses) GetUserInfoWithResponse(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*GetUserInfoClientResponse, error) {
+	rsp, err := c.GetUserInfo(ctx, userId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetUserInfoClientResponse(rsp)
 }
 
 // ParseGetTrainersClientResponse parses an HTTP response from a GetTrainersWithResponse call
@@ -823,53 +739,6 @@ func ParseGetTrainersClientResponse(rsp *http.Response) (*GetTrainersClientRespo
 			return nil, err
 		}
 		response.JSON401 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseTopUpBalanceClientResponse parses an HTTP response from a TopUpBalanceWithResponse call
-func ParseTopUpBalanceClientResponse(rsp *http.Response) (*TopUpBalanceClientResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &TopUpBalanceClientResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Balance
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest InvalidInput
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
 
 	}
 
@@ -913,6 +782,46 @@ func ParseOnboardUserClientResponse(rsp *http.Response) (*OnboardUserClientRespo
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetUserInfoClientResponse parses an HTTP response from a GetUserInfoWithResponse call
+func ParseGetUserInfoClientResponse(rsp *http.Response) (*GetUserInfoClientResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetUserInfoClientResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest User
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 

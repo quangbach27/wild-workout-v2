@@ -2,7 +2,6 @@
 
 gen:
 	go generate ./internal/...
-	$(MAKE) fmt
 
 lint:
 	go tool golangci-lint run ./...
