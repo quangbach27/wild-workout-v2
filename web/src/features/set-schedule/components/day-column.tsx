@@ -1,8 +1,11 @@
+import { useCallback, useMemo } from 'react';
+
 import type { TrainerDay } from '@/api/trainers/types';
 import { DateBadge } from '@/components/date-badge';
 import { Button } from '@/components/ui/button';
 
 import { useMakeHoursAvailable } from '../api/make-hours-available';
+import { useCurrentHour } from '../hooks/use-current-hour';
 
 import HourCell from './hour-cell';
 
@@ -13,10 +16,28 @@ export default function DayColumn(props: { day: TrainerDay }) {
   const makeAvailable = useMakeHoursAvailable();
 
   const date = new Date(props.day.date);
-  const isToday = date.toDateString() === new Date().toDateString();
-  const closedHours = props.day.hours
-    .filter((hour) => hour.status === 'not-availability')
-    .map((hour) => hour.hour);
+  const currentHour = useCurrentHour();
+  const isToday = useMemo(
+    () =>
+      new Date(props.day.date).toDateString() ===
+      new Date(currentHour).toDateString(),
+    [props.day.date, currentHour],
+  );
+
+  const closedHours = useMemo(() => {
+    const isPast = (h: { hour: string }) =>
+      new Date(h.hour).getTime() < currentHour;
+
+    return props.day.hours
+      .filter((hour) => {
+        return !isPast(hour) && hour.status === 'not-availability';
+      })
+      .map((hour) => hour.hour);
+  }, [props.day.hours, currentHour]);
+
+  const handleOpenAll = useCallback(() => {
+    makeAvailable.mutate(closedHours);
+  }, [closedHours, makeAvailable]);
 
   return (
     <div className="flex flex-col gap-2 md:gap-3">
@@ -33,7 +54,7 @@ export default function DayColumn(props: { day: TrainerDay }) {
             variant="link"
             className="text-hour-action font-semibold"
             disabled={closedHours.length === 0 || makeAvailable.isPending}
-            onClick={() => makeAvailable.mutate(closedHours)}
+            onClick={handleOpenAll}
           >
             Open all
           </Button>

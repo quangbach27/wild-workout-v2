@@ -41,25 +41,23 @@ const hourFormat = new Intl.DateTimeFormat('en-GB', {
 });
 
 export default function HourCell(props: { hour: TrainerHour }) {
-  const [status, setStatus] = useState(STATUS_VIEW[props.hour.status]);
+  const [optimistic, setOptimistic] = useState<CellStatus | null>(null);
 
   const makeAvailable = useMakeHoursAvailable();
   const makeNotAvailable = useMakeHoursNotAvailable();
 
+  const status = optimistic ?? STATUS_VIEW[props.hour.status];
+
   const handleToggleHourCell = () => {
     if (status === 'open') {
-      setStatus('closed');
+      setOptimistic('closed');
       makeNotAvailable.mutate([props.hour.hour], {
-        onError: () => {
-          setStatus('open');
-        },
+        onSettled: () => setOptimistic(null),
       });
     } else if (status === 'closed') {
-      setStatus('open');
+      setOptimistic('open');
       makeAvailable.mutate([props.hour.hour], {
-        onError: () => {
-          setStatus('closed');
-        },
+        onSettled: () => setOptimistic(null),
       });
     }
   };
