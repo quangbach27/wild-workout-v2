@@ -1,13 +1,12 @@
 package auth
 
 import (
+	"backend/internal/shared"
 	"context"
 	"errors"
 	"fmt"
 	"slices"
 	"strings"
-
-	"backend/internal/shared"
 
 	clerk "github.com/clerk/clerk-sdk-go/v2"
 	"github.com/clerk/clerk-sdk-go/v2/jwt"
@@ -37,11 +36,15 @@ func NewClerkVerifier(
 	if secretKey == "" {
 		panic("clerkauth: secret key is required")
 	}
+	if userReadModel == nil {
+		panic("userReadModel can't be nil")
+	}
 	clerk.SetKey(secretKey)
 
 	return &clerkVerifier{
 		authorizedParties: authorizedParties,
 		verify:            jwt.Verify,
+		userReadModel:     userReadModel,
 	}
 }
 
