@@ -54,16 +54,12 @@ func (rm *TrainerHoursReadModel) GetTrainerHours(
 	ctx context.Context,
 	query queries.GetTrainerHoursQuery,
 ) ([]queries.Date, error) {
-	start, endExclusive, ok := queryRange(time.Now().UTC(), query.DateFrom, query.DateTo)
-	if !ok {
-		return []queries.Date{}, nil
-	}
-
+	start := utcDay(query.DateFrom)
+	endExclusive := utcDay(query.DateTo).AddDate(0, 0, 1)
 
 	status := statusFilter(query)
 	// not available hours are mostly not stored, so they are filtered after building the grid
 	buildGrid := status == nil || *status == domain.NotAvailable
-
 	sqlStatus := status
 	if buildGrid {
 		sqlStatus = nil
@@ -89,30 +85,6 @@ func (rm *TrainerHoursReadModel) GetTrainerHours(
 	}
 
 	return dates, nil
-}
-
-func queryRange(now, from, to time.Time) (start, endExclusive time.Time, ok bool) {
-	earliestBookable := ceilHour(now.UTC())
-
-	start = maxTime(earliestBookable, utcDay(from))
-	endExclusive = utcDay(to).AddDate(0, 0, 1)
-
-	return start, endExclusive, start.Before(endExclusive)
-}
-
-func ceilHour(t time.Time) time.Time {
-	tr := t.Truncate(time.Hour)
-	if tr.Equal(t) {
-		return tr
-	}
-	return tr.Add(time.Hour)
-}
-
-func maxTime(a, b time.Time) time.Time {
-	if a.After(b) {
-		return a
-	}
-	return b
 }
 
 // statusFilter returns the status to filter by, or nil for all the statuses (nil or zero status).
@@ -176,7 +148,7 @@ func utcDay(t time.Time) time.Time {
 // buildDates returns one Date per day in [firstDay, endExclusive), each holding every hour from
 // cfg.MinUtcHour to cfg.MaxUtcHour (inclusive). Hours without a row in models are not available.
 func buildDates(
-	firstDay time.Time,
+	start time.Time,
 	endExclusive time.Time,
 	cfg *domain.HourFactoryConfig,
 	models []dbmodels.TrainersHour,
@@ -189,7 +161,7 @@ func buildDates(
 	}
 
 	dates := []queries.Date{}
-	for day := firstDay; day.Before(endExclusive); day = day.AddDate(0, 0, 1) {
+	for day := start; day.Before(endExclusive); day = day.AddDate(0, 0, 1) {
 		date := queries.Date{
 			Date:  day,
 			Hours: make([]queries.Hour, 0, cfg.MaxUtcHour-cfg.MinUtcHour+1),
