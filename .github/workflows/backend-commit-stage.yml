@@ -105,12 +105,12 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
         with:
           platforms: arm64
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       # Production runs on an arm64 (Graviton) instance, so build for arm64.
       - name: Build container image
@@ -130,7 +130,7 @@ jobs:
       #     category: backend-image
 
       - name: Log into container registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
