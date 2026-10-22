@@ -15,3 +15,7 @@ output "rds_address" {
 output "name_prefix" {
   value = local.name
 }
+
+output "s3_base_url" {
+  value = module.s3.base_url
+}

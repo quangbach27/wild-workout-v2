@@ -48,3 +48,9 @@ module "rds" {
   subnet_ids                 = module.vpc.private_subnet_ids
   allowed_security_group_ids = [module.ec2.security_group_id]
 }
+
+module "s3" {
+  source = "../modules/s3"
+
+  bucket_name = var.bucket_name
+}

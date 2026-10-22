@@ -20,3 +20,8 @@ variable "certbot_email" {
   type        = string
   default     = "buiquangbach27@gmail.com"
 }
+
+variable "bucket_name" {
+  type    = string
+  default = "bach-van-wedding"
+}
