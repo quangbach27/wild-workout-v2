@@ -1,3 +1,5 @@
+import { useAuth } from '@clerk/clerk-react';
+import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import * as z from 'zod';
 
@@ -5,7 +7,8 @@ import { CreditBadge } from '@/components/credit-badge';
 import ContentLayout from '@/components/layout/content-layout';
 import { Button } from '@/components/ui/button';
 import TrainingsList from '@/features/trainings/components/trainings-list';
-import { useRole } from '@/lib/role';
+import { getUserOptions } from '@/features/users/api/get-user-info';
+import { useRole } from '@/hooks/use-role';
 
 export const TRAININGS_URL = '/_app/trainings';
 
@@ -32,12 +35,16 @@ function TrainingsPage() {
 }
 
 const AdditionalContent = () => {
+  const { userId } = useAuth();
+  const { data } = useQuery(getUserOptions({ userId: userId! }));
+
   return (
     <div className="flex items-center gap-2">
-      <CreditBadge credits={41} />
+      <CreditBadge credits={data?.balance ?? 0} />
       <Button
         variant="default"
         size="lg"
+        nativeButton={false}
         render={<Link to="/trainings/schedule">+ Schedule training</Link>}
       />
     </div>

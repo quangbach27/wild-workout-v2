@@ -1,6 +1,10 @@
 package client
 
-import "context"
+import (
+	"context"
+
+	"backend/internal/shared"
+)
 
 type Users interface {
 	// GetUser returns the user. It returns a 404 common.Error for an unknown user.
@@ -13,14 +17,14 @@ type Users interface {
 }
 
 type GetUserRequest struct {
-	UserUUID string
+	UserID string
 }
 
 type GetUserResponse struct {
-	UUID        string
+	ID          string
 	DisplayName string
 	// Role is "trainer" or "attendee".
-	Role    string
+	Role    shared.Role
 	Balance int
 }
 

@@ -110,11 +110,7 @@ func newOnboardedAttendee(ctx context.Context, t *testing.T, clients tests.TestC
 	require.NoError(t, err)
 	require.Equal(t, http.StatusNoContent, onboard.StatusCode(), string(onboard.Body))
 
-	topUp, err := clients.Users.TopUpBalanceWithResponse(
-		ctx, usersclient.TopUpBalanceJSONRequestBody{Amount: 5}, tests.WithAuth(attendee.Token),
-	)
 	require.NoError(t, err)
-	require.Less(t, topUp.StatusCode(), http.StatusMultipleChoices, string(topUp.Body))
 
 	return attendee
 }

@@ -106,96 +106,46 @@ func TestOnboardUser(t *testing.T) {
 	})
 }
 
-func TestOnboardUserStartBalance(t *testing.T) {
+func TestGetUserInfo(t *testing.T) {
 	t.Parallel()
-
 	ctx := context.Background()
 	clients := tests.NewTestClients(t)
 
-	// A top-up of 1 returns the new balance, which exposes the starting balance.
-	balanceAfterOneTopUp := func(t *testing.T, role shared.Role) int {
-		t.Helper()
-
-		user := newUser(role)
-		onboardUser(ctx, t, clients, user, "Jane")
-
-		resp, err := clients.Users.TopUpBalanceWithResponse(
-			ctx, usersclient.TopUpBalanceJSONRequestBody{Amount: 1}, tests.WithAuth(user.Token),
-		)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
-
-		return resp.JSON200.Balance
-	}
-
-	t.Run("attendee starts with 20 credit", func(t *testing.T) {
-		t.Parallel()
-
-		assert.Equal(t, 21, balanceAfterOneTopUp(t, shared.RoleAttendee))
-	})
-
-	t.Run("trainer starts with no credit", func(t *testing.T) {
-		t.Parallel()
-
-		assert.Equal(t, 1, balanceAfterOneTopUp(t, shared.RoleTrainer))
-	})
-}
-
-func TestTopUpBalance(t *testing.T) {
-	t.Parallel()
-
-	ctx := context.Background()
-	clients := tests.NewTestClients(t)
-
-	topUp := func(t *testing.T, user testUser, amount int) *usersclient.TopUpBalanceClientResponse {
-		t.Helper()
-
-		resp, err := clients.Users.TopUpBalanceWithResponse(
-			ctx, usersclient.TopUpBalanceJSONRequestBody{Amount: amount}, tests.WithAuth(user.Token),
-		)
-		require.NoError(t, err)
-
-		return resp
-	}
-
-	t.Run("top ups accumulate", func(t *testing.T) {
+	t.Run("return users", func(t *testing.T) {
 		t.Parallel()
 
 		user := newUser(shared.RoleAttendee)
-		onboardUser(ctx, t, clients, user, "Jane")
+		onboardUser(ctx, t, clients, user, "Test User")
 
-		resp := topUp(t, user, 100)
-		require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
-		assert.Equal(t, 120, resp.JSON200.Balance)
+		resp, err := clients.Users.GetUserInfoWithResponse(ctx, user.UUID, tests.WithAuth(user.Token))
 
-		resp = topUp(t, user, 50)
-		require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
-		assert.Equal(t, 170, resp.JSON200.Balance)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, resp.StatusCode())
+
+		require.NotNil(t, resp.JSON200)
 	})
 
-	t.Run("invalid amount", func(t *testing.T) {
+	t.Run("return 404 not found when userID not exists", func(t *testing.T) {
 		t.Parallel()
 
 		user := newUser(shared.RoleAttendee)
-		onboardUser(ctx, t, clients, user, "Jane")
+		onboardUser(ctx, t, clients, user, "Test User")
 
-		for _, amount := range []int{0, -5, 1_000_001} {
-			assert.Equal(t, http.StatusBadRequest, topUp(t, user, amount).StatusCode(), "amount %d", amount)
-		}
-	})
+		resp, err := clients.Users.GetUserInfoWithResponse(ctx, "randon-user-id", tests.WithAuth(user.Token))
 
-	t.Run("user is not onboarded", func(t *testing.T) {
-		t.Parallel()
-
-		resp := topUp(t, newUser(shared.RoleAttendee), 100)
-		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
-	})
-
-	t.Run("requires authentication", func(t *testing.T) {
-		t.Parallel()
-
-		resp, err := clients.Users.TopUpBalanceWithResponse(ctx, usersclient.TopUpBalanceJSONRequestBody{Amount: 1})
 		require.NoError(t, err)
-		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode(), string(resp.Body))
+		require.Equal(t, http.StatusNotFound, resp.StatusCode())
+	})
+
+	t.Run("return 401 when user is not authenticated", func(t *testing.T) {
+		t.Parallel()
+
+		user := newUser(shared.RoleAttendee)
+		onboardUser(ctx, t, clients, user, "Test User")
+
+		resp, err := clients.Users.GetUserInfoWithResponse(ctx, user.UUID)
+
+		require.NoError(t, err)
+		require.Equal(t, http.StatusUnauthorized, resp.StatusCode())
 	})
 }

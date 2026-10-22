@@ -10,14 +10,11 @@ import (
 	"fmt"
 	"net/http"
 
+	"backend/internal/shared"
+
 	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime"
 )
-
-// Balance defines model for Balance.
-type Balance struct {
-	Balance int `json:"balance"`
-}
 
 // Error defines model for Error.
 type Error struct {
@@ -48,22 +45,21 @@ type Pagination struct {
 	Total int `json:"total"`
 }
 
-// TopUpRequest defines model for TopUpRequest.
-type TopUpRequest struct {
-	Amount int `json:"amount"`
-}
-
-// Trainer defines model for Trainer.
-type Trainer struct {
-	Balance     int    `json:"balance"`
-	DisplayName string `json:"displayName"`
-	Uuid        string `json:"uuid"`
-}
+// Role defines model for Role.
+type Role = shared.Role
 
 // TrainersPage defines model for TrainersPage.
 type TrainersPage struct {
-	Items      []Trainer  `json:"items"`
+	Items      []User     `json:"items"`
 	Pagination Pagination `json:"pagination"`
+}
+
+// User defines model for User.
+type User struct {
+	Balance     int    `json:"balance"`
+	DisplayName string `json:"displayName"`
+	Role        Role   `json:"role"`
+	Uuid        string `json:"uuid"`
 }
 
 // Conflict defines model for Conflict.
@@ -87,9 +83,6 @@ type GetTrainersParams struct {
 	PageSize *int `form:"pageSize,omitempty" json:"pageSize,omitempty"`
 }
 
-// TopUpBalanceJSONRequestBody defines body for TopUpBalance for application/json ContentType.
-type TopUpBalanceJSONRequestBody = TopUpRequest
-
 // OnboardUserJSONRequestBody defines body for OnboardUser for application/json ContentType.
 type OnboardUserJSONRequestBody = OnboardUserRequest
 
@@ -98,12 +91,12 @@ type ServerInterface interface {
 	// GetTrainers Get the trainers
 	// (GET /api/v1/trainers)
 	GetTrainers(ctx *echo.Context, params GetTrainersParams) error
-	// TopUpBalance Top up the balance of the session user
-	// (POST /api/v1/users/balance/top-up)
-	TopUpBalance(ctx *echo.Context) error
 	// OnboardUser Onboard the user from the session
 	// (POST /api/v1/users/onboard)
 	OnboardUser(ctx *echo.Context) error
+	// GetUserInfo Retrieve User Info
+	// (GET /api/v1/users/{userId})
+	GetUserInfo(ctx *echo.Context, userId string) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -136,21 +129,28 @@ func (w *ServerInterfaceWrapper) GetTrainers(ctx *echo.Context) error {
 	return err
 }
 
-// TopUpBalance converts echo context to params.
-func (w *ServerInterfaceWrapper) TopUpBalance(ctx *echo.Context) error {
-	var err error
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.TopUpBalance(ctx)
-	return err
-}
-
 // OnboardUser converts echo context to params.
 func (w *ServerInterfaceWrapper) OnboardUser(ctx *echo.Context) error {
 	var err error
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.OnboardUser(ctx)
+	return err
+}
+
+// GetUserInfo converts echo context to params.
+func (w *ServerInterfaceWrapper) GetUserInfo(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "userId" -------------
+	var userId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", ctx.Param("userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter userId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetUserInfo(ctx, userId)
 	return err
 }
 
@@ -203,7 +203,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 
 	router.GET(options.BaseURL+"/api/v1/trainers", wrapper.GetTrainers, options.OperationMiddlewares["getTrainers"]...)
 	router.POST(options.BaseURL+"/api/v1/users/onboard", wrapper.OnboardUser, options.OperationMiddlewares["onboardUser"]...)
-	router.POST(options.BaseURL+"/api/v1/users/balance/top-up", wrapper.TopUpBalance, options.OperationMiddlewares["topUpBalance"]...)
+	router.GET(options.BaseURL+"/api/v1/users/:userId", wrapper.GetUserInfo, options.OperationMiddlewares["getUserInfo"]...)
 
 }
 
@@ -261,70 +261,6 @@ func (response GetTrainers401JSONResponse) VisitGetTrainersResponse(w http.Respo
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type TopUpBalanceRequestObject struct {
-	Body *TopUpBalanceJSONRequestBody
-}
-
-type TopUpBalanceResponseObject interface {
-	VisitTopUpBalanceResponse(w http.ResponseWriter) error
-}
-
-type TopUpBalance200JSONResponse Balance
-
-func (response TopUpBalance200JSONResponse) VisitTopUpBalanceResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type TopUpBalance400JSONResponse struct{ InvalidInputJSONResponse }
-
-func (response TopUpBalance400JSONResponse) VisitTopUpBalanceResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type TopUpBalance401JSONResponse struct{ UnauthorizedJSONResponse }
-
-func (response TopUpBalance401JSONResponse) VisitTopUpBalanceResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type TopUpBalance404JSONResponse struct{ NotFoundJSONResponse }
-
-func (response TopUpBalance404JSONResponse) VisitTopUpBalanceResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -387,17 +323,67 @@ func (response OnboardUser409JSONResponse) VisitOnboardUserResponse(w http.Respo
 	return err
 }
 
+type GetUserInfoRequestObject struct {
+	UserId string `json:"userId"`
+}
+
+type GetUserInfoResponseObject interface {
+	VisitGetUserInfoResponse(w http.ResponseWriter) error
+}
+
+type GetUserInfo200JSONResponse User
+
+func (response GetUserInfo200JSONResponse) VisitGetUserInfoResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetUserInfo401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetUserInfo401JSONResponse) VisitGetUserInfoResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetUserInfo404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetUserInfo404JSONResponse) VisitGetUserInfoResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// GetTrainers Get the trainers
 	// (GET /api/v1/trainers)
 	GetTrainers(ctx context.Context, request GetTrainersRequestObject) (GetTrainersResponseObject, error)
-	// TopUpBalance Top up the balance of the session user
-	// (POST /api/v1/users/balance/top-up)
-	TopUpBalance(ctx context.Context, request TopUpBalanceRequestObject) (TopUpBalanceResponseObject, error)
 	// OnboardUser Onboard the user from the session
 	// (POST /api/v1/users/onboard)
 	OnboardUser(ctx context.Context, request OnboardUserRequestObject) (OnboardUserResponseObject, error)
+	// GetUserInfo Retrieve User Info
+	// (GET /api/v1/users/{userId})
+	GetUserInfo(ctx context.Context, request GetUserInfoRequestObject) (GetUserInfoResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx *echo.Context, request any) (any, error)
@@ -437,45 +423,6 @@ func (sh *strictHandler) GetTrainers(ctx *echo.Context, params GetTrainersParams
 	return nil
 }
 
-// TopUpBalance operation middleware
-func (sh *strictHandler) TopUpBalance(ctx *echo.Context) error {
-	var request TopUpBalanceRequestObject
-
-	var body TopUpBalanceJSONRequestBody
-	var err error
-	if _, ok := ctx.Echo().Binder.(*echo.DefaultBinder); ok {
-		// Bind only the request body, so that path and query parameters
-		// are not also bound into the body struct.
-		err = echo.BindBody(ctx, &body)
-	} else {
-		// A custom binder is installed on the Echo instance; defer to it
-		// entirely, since echo.Binder does not expose body-only binding.
-		err = ctx.Bind(&body)
-	}
-	if err != nil {
-		return err
-	}
-	request.Body = &body
-
-	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.TopUpBalance(ctx.Request().Context(), request.(TopUpBalanceRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "TopUpBalance")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		return err
-	} else if validResponse, ok := response.(TopUpBalanceResponseObject); ok {
-		return validResponse.VisitTopUpBalanceResponse(ctx.Response())
-	} else if response != nil {
-		return fmt.Errorf("unexpected response type: %T", response)
-	}
-	return nil
-}
-
 // OnboardUser operation middleware
 func (sh *strictHandler) OnboardUser(ctx *echo.Context) error {
 	var request OnboardUserRequestObject
@@ -509,6 +456,31 @@ func (sh *strictHandler) OnboardUser(ctx *echo.Context) error {
 		return err
 	} else if validResponse, ok := response.(OnboardUserResponseObject); ok {
 		return validResponse.VisitOnboardUserResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// GetUserInfo operation middleware
+func (sh *strictHandler) GetUserInfo(ctx *echo.Context, userId string) error {
+	var request GetUserInfoRequestObject
+
+	request.UserId = userId
+
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetUserInfo(ctx.Request().Context(), request.(GetUserInfoRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetUserInfo")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(GetUserInfoResponseObject); ok {
+		return validResponse.VisitGetUserInfoResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}

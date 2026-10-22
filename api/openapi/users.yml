@@ -41,6 +41,7 @@ paths:
           $ref: "#/components/responses/InvalidInput"
         "401":
           $ref: "#/components/responses/Unauthorized"
+
   /api/v1/users/onboard:
     post:
       operationId: onboardUser
@@ -63,32 +64,30 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "409":
           $ref: "#/components/responses/Conflict"
-  /api/v1/users/balance/top-up:
-    post:
-      operationId: topUpBalance
-      summary: Top up the balance of the session user
-      description: >
-        Adds `amount` to the balance of the user from the session and returns the new balance.
-        There is no payment step yet.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TopUpRequest"
+
+  /api/v1/users/{userId}:
+    get:
+      operationId: getUserInfo
+      summary: Retrieve User Info
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: The unique identifier of the user
+          schema:
+            type: string
       responses:
         "200":
-          description: The balance after the top-up
+          description: User information retrieved successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Balance"
-        "400":
-          $ref: "#/components/responses/InvalidInput"
+                $ref: "#/components/schemas/User"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -120,20 +119,6 @@ components:
           schema:
             $ref: "#/components/schemas/Error"
   schemas:
-    TopUpRequest:
-      type: object
-      required: [amount]
-      properties:
-        amount:
-          type: integer
-          minimum: 1
-          maximum: 1000000
-    Balance:
-      type: object
-      required: [balance]
-      properties:
-        balance:
-          type: integer
     OnboardUserRequest:
       type: object
       required: [displayName]
@@ -147,7 +132,7 @@ components:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/Trainer"
+            $ref: "#/components/schemas/User"
         pagination:
           $ref: "#/components/schemas/Pagination"
     Pagination:
@@ -161,9 +146,9 @@ components:
         total:
           type: integer
           description: Number of items across all pages
-    Trainer:
+    User:
       type: object
-      required: [uuid, displayName, balance]
+      required: [uuid, displayName, balance, role]
       properties:
         uuid:
           type: string
@@ -171,6 +156,15 @@ components:
           type: string
         balance:
           type: integer
+        role: 
+          $ref: "#/components/schemas/Role"
+
+    Role:
+      type: string
+      x-go-type: shared.Role
+      x-go-type-import:
+        path: backend/internal/shared
+
     Error:
       type: object
       required: [message, slug]

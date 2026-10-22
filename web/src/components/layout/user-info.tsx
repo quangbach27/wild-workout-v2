@@ -1,28 +1,27 @@
-import { useUser } from '@clerk/clerk-react';
+import { useAuth } from '@clerk/clerk-react';
+import { useQuery } from '@tanstack/react-query';
 
-import { useRole } from '@/lib/role';
+import { getUserOptions } from '@/features/users/api/get-user-info';
 
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { Avatar, AvatarFallback } from '../ui/avatar';
 
 // Who is signed in: avatar, name and role (the backend sets the role in Clerk's public metadata).
 export default function UserInfo() {
-  const { user } = useUser();
-  const name = user?.fullName ?? '';
-  const { role } = useRole();
+  const { userId } = useAuth();
+  const { data: user } = useQuery(getUserOptions({ userId: userId! }));
 
   return (
     <div className="flex items-center gap-3">
       <Avatar>
-        <AvatarImage src={user?.imageUrl} alt={name} />
-        <AvatarFallback>{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+        <AvatarFallback className="bg-green-700 text-white">
+          {user?.displayName.slice(0, 2).toUpperCase()}
+        </AvatarFallback>
       </Avatar>
       <div className="flex flex-col leading-tight">
-        <span>{name}</span>
-        {role && (
-          <span className="text-muted-foreground text-xs capitalize">
-            {role}
-          </span>
-        )}
+        <span>{user?.displayName}</span>
+        <span className="text-muted-foreground text-xs capitalize">
+          {user?.role}
+        </span>
       </div>
     </div>
   );

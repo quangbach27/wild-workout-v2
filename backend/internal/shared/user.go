@@ -1,31 +1,14 @@
-package models
+package shared
 
 import (
-	"context"
-
 	common "github.com/quangbach27/golang-common"
-
-	"backend/internal/shared"
 )
-
-type UserRepository interface {
-	OnboardUser(ctx context.Context, user *User) error
-	GetUserByUUID(ctx context.Context, userID string) (*User, error)
-	UpdateUser(
-		ctx context.Context,
-		userID string,
-		updateFn func(user *User) error,
-	) error
-	// DeleteUser removes the user; deleting an unknown user is not an error.
-	DeleteUser(ctx context.Context, userID string) error
-	UpdateBalance(ctx context.Context, userID string, amountChange int) (int, error)
-}
 
 type User struct {
 	uuid        string
 	balance     int
 	displayName string
-	role        shared.Role
+	role        Role
 }
 
 func (u User) UUID() string {
@@ -40,7 +23,7 @@ func (u User) DisplayName() string {
 	return u.displayName
 }
 
-func (u User) Role() shared.Role {
+func (u User) Role() Role {
 	return u.role
 }
 
@@ -50,7 +33,7 @@ func (u User) Role() shared.Role {
 func NewUser(
 	uuid,
 	displayName string,
-	role shared.Role,
+	role Role,
 	startBalance int,
 ) (*User, error) {
 	errDetails := []common.ErrorDetails{}
@@ -94,7 +77,7 @@ func NewUser(
 // Update changes the display name and/or role; nil leaves a field unchanged. It returns a
 // common.Error (400) whose details list each failure (invalid-user-display-name, invalid-user-role)
 // and leaves the user untouched on failure.
-func (u *User) Update(displayName *string, role *shared.Role) error {
+func (u *User) Update(displayName *string, role *Role) error {
 	errDetails := []common.ErrorDetails{}
 
 	if displayName != nil && *displayName == "" {
@@ -128,6 +111,6 @@ func (u *User) Update(displayName *string, role *shared.Role) error {
 }
 
 // UnmarshalUser rebuilds a user from persisted data, bypassing validation.
-func UnmarshalUser(uuid, displayName string, balance int, role shared.Role) *User {
+func UnmarshalUser(uuid, displayName string, balance int, role Role) *User {
 	return &User{uuid: uuid, balance: balance, displayName: displayName, role: role}
 }

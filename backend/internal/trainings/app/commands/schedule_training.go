@@ -3,13 +3,13 @@ package commands
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"time"
 
 	"backend/internal/shared"
-	trainersClient "backend/internal/trainers/ports/module/client"
 	"backend/internal/trainings/domain"
 	"backend/internal/users/ports/module/client"
+
+	trainersClient "backend/internal/trainers/ports/module/client"
 )
 
 type ScheduleTrainingCmd struct {
@@ -22,12 +22,12 @@ type ScheduleTrainingCmd struct {
 // ScheduleTraining books the hour in the trainers module and then stores the training. If storing
 // fails, the hour is released again.
 func (h *Handler) ScheduleTraining(ctx context.Context, cmd ScheduleTrainingCmd) (domain.TrainingUUID, error) {
-	attendeeUser, err := h.modules.GetUser(ctx, client.GetUserRequest{UserUUID: cmd.AttendeeUUID})
+	attendeeUser, err := h.modules.GetUser(ctx, client.GetUserRequest{UserID: cmd.AttendeeUUID})
 	if err != nil {
 		return domain.TrainingUUID{}, err
 	}
 
-	trainerUser, err := h.modules.GetUser(ctx, client.GetUserRequest{UserUUID: cmd.TrainerUUID})
+	trainerUser, err := h.modules.GetUser(ctx, client.GetUserRequest{UserID: cmd.TrainerUUID})
 	if err != nil {
 		return domain.TrainingUUID{}, err
 	}
@@ -55,17 +55,6 @@ func (h *Handler) ScheduleTraining(ctx context.Context, cmd ScheduleTrainingCmd)
 	}
 
 	if err := h.trainingRepo.AddTraining(ctx, training); err != nil {
-		if _, cancelErr := h.modules.CancelHourSchedule(ctx, trainersClient.CancelHourScheduleRequest{
-			TrainerUUID: cmd.TrainerUUID,
-			Hour:        cmd.Hour,
-		}); cancelErr != nil {
-			slog.ErrorContext(ctx, "failed to release hour after training could not be stored",
-				"trainer_uuid", cmd.TrainerUUID,
-				"hour", cmd.Hour,
-				"error", cancelErr,
-			)
-		}
-
 		return domain.TrainingUUID{}, err
 	}
 

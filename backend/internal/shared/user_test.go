@@ -1,4 +1,4 @@
-package models_test
+package shared_test
 
 import (
 	"testing"
@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"backend/internal/shared"
-	"backend/internal/users/app/models"
 )
 
 func TestUser_Update(t *testing.T) {
@@ -37,7 +36,7 @@ func TestUser_Update(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			user, err := models.NewUser("uuid", "Old Name", shared.RoleAttendee, 0)
+			user, err := shared.NewUser("uuid", "Old Name", shared.RoleAttendee, 0)
 			require.NoError(t, err)
 
 			err = user.Update(tc.displayName, tc.role)
@@ -56,7 +55,7 @@ func TestUser_Update(t *testing.T) {
 func TestNewUser_StartBalance(t *testing.T) {
 	t.Parallel()
 
-	user, err := models.NewUser("uuid", "Name", shared.RoleAttendee, 20)
+	user, err := shared.NewUser("uuid", "Name", shared.RoleAttendee, 20)
 	require.NoError(t, err)
 	assert.Equal(t, 20, user.Balance())
 }

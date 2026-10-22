@@ -1,12 +1,27 @@
 package app
 
-import "backend/internal/users/app/models"
+import (
+	"context"
 
-type Service struct {
-	userRepo models.UserRepository
+	"backend/internal/shared"
+)
+
+type UserRepository interface {
+	OnboardUser(ctx context.Context, user *shared.User) error
+	UpdateUser(
+		ctx context.Context,
+		userID string,
+		updateFn func(user *shared.User) error,
+	) error
+	UpdateBalance(ctx context.Context, userID string, amountChange int) (int, error)
+	DeleteUser(ctx context.Context, userID string) error
 }
 
-func NewService(userRepo models.UserRepository) *Service {
+type Service struct {
+	userRepo UserRepository
+}
+
+func NewService(userRepo UserRepository) *Service {
 	if userRepo == nil {
 		panic("userRepo can't be nil")
 	}

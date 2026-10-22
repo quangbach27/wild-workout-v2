@@ -6,14 +6,14 @@ import (
 
 	common "github.com/quangbach27/golang-common"
 
+	"backend/internal/shared"
 	"backend/internal/users/app"
 	"backend/internal/users/ports/module/client"
 )
 
-// UserReadModel serves the user lookups of the contract without going through the repository.
 type UserReadModel interface {
 	// GetUser returns a 404 common.Error for an unknown user.
-	GetUser(ctx context.Context, userUUID string) (client.GetUserResponse, error)
+	GetUser(ctx context.Context, userID string) (*shared.User, error)
 }
 
 type Users struct {
@@ -39,20 +39,29 @@ func New(service *app.Service, userReadModel UserReadModel) *Users {
 }
 
 func (u *Users) GetUser(ctx context.Context, req client.GetUserRequest) (client.GetUserResponse, error) {
-	if req.UserUUID == "" {
-		return client.GetUserResponse{}, common.NewInvalidInputError("invalid-user-uuid", "user uuid can't be empty")
+	if req.UserID == "" {
+		return client.GetUserResponse{}, common.NewInvalidInputError("invalid-user-uuid", "user id can't be empty")
+	}
+	userModel, err := u.userReadModel.GetUser(ctx, req.UserID)
+	if err != nil {
+		return client.GetUserResponse{}, err
 	}
 
-	return u.userReadModel.GetUser(ctx, req.UserUUID)
+	return client.GetUserResponse{
+		ID:          userModel.UUID(),
+		DisplayName: userModel.DisplayName(),
+		Role:        userModel.Role(),
+		Balance:     userModel.Balance(),
+	}, nil
 }
 
 func (u *Users) GetBalance(ctx context.Context, req client.GetBalanceRequest) (client.GetBalanceResponse, error) {
-	balance, err := u.service.GetBalance(ctx, req.UserUUID)
+	userInfo, err := u.userReadModel.GetUser(ctx, req.UserUUID)
 	if err != nil {
 		return client.GetBalanceResponse{}, err
 	}
 
-	return client.GetBalanceResponse{Balance: balance}, nil
+	return client.GetBalanceResponse{Balance: userInfo.Balance()}, nil
 }
 
 func (u *Users) UpdateBalance(

@@ -56,7 +56,7 @@ func NewConfig() *Config {
 			Username: getEnv("DB_USERNAME", "user"),
 			Password: getEnv("DB_PASSWORD", "password"),
 			Host:     getEnv("DB_HOST", "localhost"),
-			Name:     getEnv("DB_NAME", "sumni-finance"),
+			Name:     getEnv("DB_NAME", "wild-workout"),
 			Port:     getEnv("DB_PORT", "5432"),
 			SSLMode:  getEnv("DB_SSLMODE", "disable"),
 		},

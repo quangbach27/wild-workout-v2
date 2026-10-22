@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"backend/internal/shared"
-	"backend/internal/users/app/models"
 )
 
 // attendeeStartBalance is the credit a new attendee gets when onboarded.
@@ -22,7 +21,7 @@ func (s *Service) OnboardUser(ctx context.Context, cmd OnboardUserCmd) error {
 		startBalance = attendeeStartBalance
 	}
 
-	user, err := models.NewUser(cmd.UUID, cmd.DisplayName, cmd.Role, startBalance)
+	user, err := shared.NewUser(cmd.UUID, cmd.DisplayName, cmd.Role, startBalance)
 	if err != nil {
 		return err
 	}

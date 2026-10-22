@@ -44,20 +44,17 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    '/api/v1/users/balance/top-up': {
+    '/api/v1/users/{userId}': {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Retrieve User Info */
+        get: operations['getUserInfo'];
         put?: never;
-        /**
-         * Top up the balance of the session user
-         * @description Adds `amount` to the balance of the user from the session and returns the new balance. There is no payment step yet.
-         */
-        post: operations['topUpBalance'];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -68,17 +65,11 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        TopUpRequest: {
-            amount: number;
-        };
-        Balance: {
-            balance: number;
-        };
         OnboardUserRequest: {
             displayName: string;
         };
         TrainersPage: {
-            items: components['schemas']['Trainer'][];
+            items: components['schemas']['User'][];
             pagination: components['schemas']['Pagination'];
         };
         Pagination: {
@@ -87,11 +78,13 @@ export interface components {
             /** @description Number of items across all pages */
             total: number;
         };
-        Trainer: {
+        User: {
             uuid: string;
             displayName: string;
             balance: number;
+            role: components['schemas']['Role'];
         };
+        Role: string;
         Error: {
             message: string;
             slug: string;
@@ -201,29 +194,27 @@ export interface operations {
             409: components['responses']['Conflict'];
         };
     };
-    topUpBalance: {
+    getUserInfo: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                /** @description The unique identifier of the user */
+                userId: string;
+            };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                'application/json': components['schemas']['TopUpRequest'];
-            };
-        };
+        requestBody?: never;
         responses: {
-            /** @description The balance after the top-up */
+            /** @description User information retrieved successfully */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': components['schemas']['Balance'];
+                    'application/json': components['schemas']['User'];
                 };
             };
-            400: components['responses']['InvalidInput'];
             401: components['responses']['Unauthorized'];
             404: components['responses']['NotFound'];
         };

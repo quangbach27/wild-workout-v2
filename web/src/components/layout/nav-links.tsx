@@ -3,9 +3,8 @@ import { useMemo } from 'react';
 import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
 
-import { type Role, useRole } from '@/lib/role';
-
 import { Button } from '../ui/button';
+import { useRole, type Role } from '@/hooks/use-role';
 
 const navItems: { to: string; label: string; roles: Role[] }[] = [
   {
@@ -58,6 +57,7 @@ export default function NavLinks(props: NavLinksProps) {
             'data-[status=active]:bg-muted data-[status=active]:text-foreground',
             props.vertical && 'h-11 justify-start text-base',
           )}
+          nativeButton={false}
           render={
             <Link
               to={item.to}

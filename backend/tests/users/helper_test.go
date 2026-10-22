@@ -3,6 +3,11 @@
 package users_test
 
 import (
+	"backend/internal/configs"
+	"backend/internal/shared"
+	"backend/internal/users/adapters/db"
+	"backend/internal/users/app"
+	"backend/tests"
 	"context"
 	"net/http"
 	"testing"
@@ -11,12 +16,7 @@ import (
 	common "github.com/quangbach27/golang-common"
 	"github.com/stretchr/testify/require"
 
-	"backend/internal/configs"
-	"backend/internal/shared"
-	"backend/internal/users/adapters/db"
-	"backend/internal/users/app"
 	usersclient "backend/internal/users/ports/http/clients"
-	"backend/tests"
 )
 
 type testUser struct {

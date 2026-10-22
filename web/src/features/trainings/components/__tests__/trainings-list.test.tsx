@@ -77,16 +77,24 @@ describe('TrainingsList', () => {
     mockItems = [training('1'), training('2')];
     renderList();
 
-    expect(await screen.findAllByText('Move')).toHaveLength(2);
-    expect(screen.getAllByText('Cancel')).toHaveLength(2);
+    expect(await screen.findAllByRole('button', { name: 'Cancel' })).toHaveLength(
+      2,
+    );
   });
 
   it('cancels a training', async () => {
     mockItems = [training('1')];
     renderList();
 
-    await userEvent.click(await screen.findByText('Cancel'));
-    expect(mockCancel).toHaveBeenCalledWith('1');
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Cancel' }),
+    );
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Cancel training' }),
+    );
+
+    expect(mockCancel).toHaveBeenCalledWith('1', expect.anything());
   });
 
   it('hides the actions of canceled trainings', async () => {
@@ -110,7 +118,7 @@ describe('TrainingsList', () => {
     mockItems = [training('1')];
     renderList();
 
-    await screen.findByText('Move');
+    await screen.findByText('Cancel');
     expect(
       screen.queryByRole('button', { name: 'Next page' }),
     ).not.toBeInTheDocument();
