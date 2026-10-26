@@ -154,6 +154,10 @@ resource "aws_instance" "this" {
   }
 
   tags = merge(var.tags, { Name = "${var.name}-ec2" })
+
+  lifecycle {
+    ignore_changes = [ami]
+  }
 }
 
 resource "aws_eip_association" "this" {
