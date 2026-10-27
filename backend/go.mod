@@ -5,9 +5,9 @@ go 1.27.0
 require (
 	github.com/clerk/clerk-sdk-go/v2 v2.7.0
 	github.com/jackc/pgx/v5 v5.11.0
-	github.com/labstack/echo/v5 v5.4.0
-	github.com/oapi-codegen/runtime v1.7.0
-	github.com/quangbach27/golang-common v0.0.6
+	github.com/labstack/echo/v5 v5.4.2
+	github.com/oapi-codegen/runtime v1.8.0
+	github.com/quangbach27/golang-common v0.0.7
 	github.com/stretchr/testify v1.12.1
 	github.com/svix/svix-webhooks v1.99.1
 	golang.org/x/sync v0.24.0
@@ -179,7 +179,7 @@ require (
 	github.com/nishanths/exhaustive v0.13.0 // indirect
 	github.com/nishanths/predeclared v0.2.2 // indirect
 	github.com/nunnatsa/ginkgolinter v0.24.0 // indirect
-	github.com/oapi-codegen/oapi-codegen/v2 v2.8.0 // indirect
+	github.com/oapi-codegen/oapi-codegen/v2 v2.8.1 // indirect
 	github.com/oasdiff/yaml v0.1.1 // indirect
 	github.com/oasdiff/yaml3 v0.0.14 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
